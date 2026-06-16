@@ -1,0 +1,388 @@
+{
+  "name": "BFC Email Attachment Reader Helper V2 - PDF Extraction",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "message_id"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        320
+      ],
+      "id": "f5824c81-2b6e-446e-8ed0-177bfabe2d38",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "url": "=https://gmail.googleapis.com/gmail/v1/users/me/messages/{{ $json.message_id || $json.input }}?format=full",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        224,
+        320
+      ],
+      "id": "39c959d5-0976-4342-b5e4-5772fcc9e0cf",
+      "name": "HTTP Request",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "bRzBJpTlCYHQbe4O",
+          "name": "Gmail OAuth2 API"
+        },
+        "googleOAuth2Api": {
+          "id": "S0vKQTlC8w4UD4hV",
+          "name": "Google account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://gmail.googleapis.com/gmail/v1/users/me/messages/{{ $json.messageId }}/attachments/{{ $json.attachmentId }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        896,
+        192
+      ],
+      "id": "07beabde-de89-45a6-8606-ad8670c9f5d3",
+      "name": "Download Attachment",
+      "credentials": {
+        "googleOAuth2Api": {
+          "id": "S0vKQTlC8w4UD4hV",
+          "name": "Google account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const message = $json;\n\nfunction findAttachments(part, results = []) {\n  if (!part) return results;\n\n  if (part.filename && part.body && part.body.attachmentId) {\n    results.push({\n      filename: part.filename,\n      mimeType: part.mimeType,\n      attachmentId: part.body.attachmentId,\n      size: part.body.size || null,\n      messageId: message.id,\n      threadId: message.threadId,\n      snippet: message.snippet || \"\"\n    });\n  }\n\n  if (part.parts && Array.isArray(part.parts)) {\n    for (const child of part.parts) {\n      findAttachments(child, results);\n    }\n  }\n\n  return results;\n}\n\nconst attachments = findAttachments(message.payload);\n\nif (attachments.length === 0) {\n  return [{\n    json: {\n      messageId: message.id,\n      foundAttachments: false,\n      note: \"No readable attachment metadata found in this Gmail message.\"\n    }\n  }];\n}\n\nreturn attachments.map(a => ({ json: a }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        320
+      ],
+      "id": "0ba20ed6-4cf4-41a7-b5d9-3b2339918936",
+      "name": "Find Attachments"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Safe final return for attachment helper.\n// Handles:\n// 1. No attachment found\n// 2. PDF text extraction\n// 3. CSV extraction rows\n// 4. Metadata-only fallback\n\nconst MAX_CHARS = 6000;\nconst item = $json || {};\nconst allItems = $input.all();\n\n// Case 1: no attachment found\nif (item.foundAttachments === false) {\n  return [{\n    json: {\n      success: false,\n      foundAttachments: false,\n      messageId: item.messageId || item.message_id || \"[unknown]\",\n      note: item.note || \"No readable attachment metadata found in this Gmail message.\"\n    }\n  }];\n}\n\n// Pull attachment metadata from Find Attachments\nlet meta = {};\ntry {\n  const findItems = $items(\"Find Attachments\");\n  if (findItems && findItems[0] && findItems[0].json) {\n    meta = findItems[0].json;\n  }\n} catch (e) {\n  meta = {};\n}\n\n// Try to collect extracted content\nlet extractedText = \"\";\n\n// CSV extraction often returns multiple rows as multiple items\nif (allItems.length > 1) {\n  extractedText = JSON.stringify(allItems.map(i => i.json), null, 2);\n} else if (typeof item.text === \"string\") {\n  extractedText = item.text;\n} else if (typeof item.data === \"string\") {\n  extractedText = item.data;\n} else if (typeof item.attachmentText === \"string\") {\n  extractedText = item.attachmentText;\n} else if (typeof item.content === \"string\") {\n  extractedText = item.content;\n} else if (typeof item.extractedText === \"string\") {\n  extractedText = item.extractedText;\n} else if (Object.keys(item).length > 0) {\n  extractedText = JSON.stringify(item, null, 2);\n}\n\nconst cleanedText = String(extractedText || \"\")\n  .replace(/\\r/g, \"\")\n  .replace(/\\n{3,}/g, \"\\n\\n\")\n  .trim();\n\nconst wasTruncated = cleanedText.length > MAX_CHARS;\nconst previewText = wasTruncated\n  ? cleanedText.slice(0, MAX_CHARS) + \"\\n\\n[TRUNCATED: attachment was longer than the safe preview limit.]\"\n  : cleanedText;\n\nreturn [{\n  json: {\n    success: true,\n    foundAttachments: true,\n    filename: meta.filename || item.filename || item.fileName || \"[unknown filename]\",\n    mimeType: meta.mimeType || item.mimeType || item.mime || \"[unknown mime type]\",\n    messageId: meta.messageId || item.messageId || item.message_id || \"[unknown message ID]\",\n    attachmentId: meta.attachmentId || item.attachmentId || item.attachment_id || \"[unknown attachment ID]\",\n    attachmentCharacterCount: cleanedText.length,\n    attachmentWasTruncated: wasTruncated,\n    attachmentText: previewText || \"[No readable text extracted.]\",\n    note: previewText\n      ? \"Attachment was processed and readable text/data was returned.\"\n      : \"Attachment was processed, but no readable text/data was extracted.\"\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1792,
+        320
+      ],
+      "id": "cf55a26f-2f59-4347-83a4-6dd6754e29dd",
+      "name": "Return Attachment Summary"
+    },
+    {
+      "parameters": {
+        "jsCode": "const base64url = $json.data;\n\nif (!base64url) {\n  return [{\n    json: {\n      success: false,\n      error: \"No attachment data found.\"\n    }\n  }];\n}\n\nconst base64 = base64url\n  .replace(/-/g, '+')\n  .replace(/_/g, '/');\n\nconst buffer = Buffer.from(base64, 'base64');\n\nconst meta = $items(\"Find Attachments\")[0].json;\n\nreturn [{\n  json: {\n    success: true,\n    filename: meta.filename || \"attachment\",\n    mimeType: meta.mimeType || \"application/octet-stream\",\n    messageId: meta.messageId,\n    attachmentId: meta.attachmentId\n  },\n  binary: {\n    data: {\n      data: buffer.toString('base64'),\n      mimeType: meta.mimeType || \"application/octet-stream\",\n      fileName: meta.filename || \"attachment\"\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        192
+      ],
+      "id": "b2c3f491-5a1c-4b78-9e02-9af70fd9271d",
+      "name": "Convert Attachment to Binary"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        1568,
+        0
+      ],
+      "id": "e3660494-125f-4a06-a0e3-0525f92319ac",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "122b470e-1145-44f0-b6c9-bf8666e5ecad",
+              "leftValue": "={{ $json.mimeType }}",
+              "rightValue": "=application/pdf",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1344,
+        192
+      ],
+      "id": "70501790-348a-4ba4-ab17-a748c594205c",
+      "name": "Is PDF?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "454e3213-f1ab-4655-80c7-b06e8aefb0c1",
+              "leftValue": "={{ $json.foundAttachments }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        672,
+        320
+      ],
+      "id": "7ac50448-1ead-4f3a-a09f-6adc687d49ba",
+      "name": "Attachment Found?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "2de4faca-537f-4d02-a836-dd56c0f0349c",
+              "leftValue": "={{ $json.mimeType }}",
+              "rightValue": "text/csv",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1568,
+        192
+      ],
+      "id": "17920928-cc05-4b82-887f-55c1712c063c",
+      "name": "Is CSV?"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        1776,
+        96
+      ],
+      "id": "341ac30e-e22a-43b2-8e5b-338fd1776a84",
+      "name": "Extract CSV"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Find Attachments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Attachment": {
+      "main": [
+        [
+          {
+            "node": "Convert Attachment to Binary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Attachments": {
+      "main": [
+        [
+          {
+            "node": "Attachment Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert Attachment to Binary": {
+      "main": [
+        [
+          {
+            "node": "Is PDF?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Return Attachment Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is PDF?": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Attachment Summary",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Is CSV?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attachment Found?": {
+      "main": [
+        [
+          {
+            "node": "Download Attachment",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Attachment Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is CSV?": {
+      "main": [
+        [
+          {
+            "node": "Extract CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract CSV": {
+      "main": [
+        [
+          {
+            "node": "Return Attachment Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "c006bd52-b3c1-4131-b06a-4294f70dfa1d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6d0b1d4f2e06ca089fae6ebdc1cff54938a4dac58a9bed7f37ff54264808d416"
+  },
+  "nodeGroups": [],
+  "id": "1uDZbaWBflxm68Oe",
+  "tags": []
+}

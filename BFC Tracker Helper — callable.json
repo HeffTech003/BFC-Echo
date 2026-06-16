@@ -1,0 +1,318 @@
+{
+  "name": "BFC Tracker Helper — callable",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "source"
+            },
+            {
+              "name": "category"
+            },
+            {
+              "name": "risk_level"
+            },
+            {
+              "name": "person_or_organisation"
+            },
+            {
+              "name": "subject_or_title"
+            },
+            {
+              "name": "summary"
+            },
+            {
+              "name": "evidence"
+            },
+            {
+              "name": "recommended_next_action"
+            },
+            {
+              "name": "owner"
+            },
+            {
+              "name": "status"
+            },
+            {
+              "name": "due_date"
+            },
+            {
+              "name": "source_id_or_link"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "5165cb56-a4be-401a-aea4-e1e2973dc732",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1QZeQ_g1SroWTN8qRE9O-lPz_0VFAB4i9KmCpE5KqX4M",
+          "mode": "list",
+          "cachedResultName": "BFC Echo Tracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1QZeQ_g1SroWTN8qRE9O-lPz_0VFAB4i9KmCpE5KqX4M/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1QZeQ_g1SroWTN8qRE9O-lPz_0VFAB4i9KmCpE5KqX4M/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date Added": "={{ $now }}",
+            "Source": "={{ $json.source || \"Echo\" }}",
+            "Category": "={{ $json.category }}",
+            "Risk Level": "={{ $json.risk_level }}",
+            "Person / Organisation": "={{ $json.person_or_organisation }}",
+            "Subject / Title": "={{ $json.subject_or_title }}",
+            "Summary": "={{ $json.summary }}",
+            "Evidence": "={{ $json.evidence }}",
+            "Recommended Next Action": "={{ $json.recommended_next_action }}",
+            "Owner": "={{ $json.owner }}",
+            "Status": "={{ $json.status || \"Waiting for BFC Team\" }}",
+            "Due Date": "={{ $json.due_date }}",
+            "Source ID / Link": "={{ $json.source_id_or_link }}",
+            "Created By": "Echo"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Date Added",
+              "displayName": "Date Added",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Source",
+              "displayName": "Source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Category",
+              "displayName": "Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Risk Level",
+              "displayName": "Risk Level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Person / Organisation",
+              "displayName": "Person / Organisation",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Subject / Title",
+              "displayName": "Subject / Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Summary",
+              "displayName": "Summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Evidence",
+              "displayName": "Evidence",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Recommended Next Action",
+              "displayName": "Recommended Next Action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Owner",
+              "displayName": "Owner",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Due Date",
+              "displayName": "Due Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Source ID / Link",
+              "displayName": "Source ID / Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Created By",
+              "displayName": "Created By",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        208,
+        0
+      ],
+      "id": "2055495e-4daf-4479-a426-257bd26cfa43",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "CaoKD3EXIAUsqClz",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    success: true,\n    message: \"Tracker item recorded successfully.\",\n    category: $json.category || \"\",\n    risk_level: $json.risk_level || \"\",\n    subject_or_title: $json.subject_or_title || \"\",\n    status: $json.status || \"Waiting for BFC Team\"\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "fb797104-c8ca-454f-b1fa-44aa2ea011e5",
+      "name": "Return Tracker Result"
+    }
+  ],
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "source": "Echo",
+          "category": "Operations / Automation",
+          "risk_level": "MEDIUM",
+          "person_or_organisation": "BFC",
+          "subject_or_title": "n8n attachment reader workflow error",
+          "summary": "Echo identified a workflow error involving the BFC Email Attachment Reader Helper. This may affect automated attachment processing.",
+          "evidence": "Echo command briefing flagged an n8n workflow error from the admin inbox review.",
+          "recommended_next_action": "BFC Team should investigate the workflow error, confirm whether attachments were missed, and reprocess any affected emails if needed.",
+          "owner": "BFC Team",
+          "status": "Waiting for BFC Team",
+          "due_date": "",
+          "source_id_or_link": "n8n workflow alert"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Return Tracker Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "4898f10a-1863-4437-bea5-f0e12cf108bb",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6d0b1d4f2e06ca089fae6ebdc1cff54938a4dac58a9bed7f37ff54264808d416"
+  },
+  "nodeGroups": [],
+  "id": "oOcDgHVVY46HaVWf",
+  "tags": [
+    {
+      "updatedAt": "2026-06-14T06:31:14.919Z",
+      "createdAt": "2026-06-14T06:31:14.919Z",
+      "id": "XjXajirVuP0Bjvav",
+      "name": "BFC Helpers"
+    }
+  ]
+}

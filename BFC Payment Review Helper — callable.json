@@ -1,0 +1,280 @@
+{
+  "name": "BFC Payment Review Helper — callable",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.request }}",
+        "options": {
+          "systemMessage": "You are being called by Echo, the BFC Command Centre Agent. Return a clear payment review summary only. Do not ask follow-up questions unless the request is impossible. Do not perform actions. Return findings for human review.\n\nYou are the BFC Payment Review Agent.\n\nIf Read Invoice Attachments confirms an attachment exists but returns no readable extracted text, do not guess the invoice amount, due date, bank details, or payment status. Mark the item for manual review and clearly state that the attachment exists but automated extraction could not read the contents.\n\nYou are a read-only payment review assistant for Bendigo Fight Centre.\n\nYour role is to identify possible payments that may need human review.\n\nYou may read emails, invoices, attachments, Xero records, and relevant documents.\n\nWhen checking Xero, consider that supplier payments may appear as bills, accounts payable, purchases, expenses, contacts, or invoices depending on how Xero stores them.\n\nYou must summarise:\n- Payee\n- Amount\n- Due date\n- What the payment appears to be for\n- Evidence found\n- Whether the payment is confirmed or uncertain\n- Risk level\n- Recommended next action for BFC Team\n\nYou must never approve, schedule, send, create, modify, or delete payments.\n\nYou must never update bank details.\n\nYou must never mark anything as paid.\n\nYou must never tell the user that a payment should definitely be made. Phrase payment actions as “recommended for human review.”\n\nIf bank details are new, changed, missing, suspicious, or only provided by email, mark the item HIGH RISK and tell BFC Team to verify manually through a trusted contact method.\n\nIf an invoice, amount, payee, due date, or bank details are unclear, say so clearly.\n\nIf Xero search returns old or unrelated records, do not treat that as proof no current bill exists. Say “no matching record found in the returned Xero results.”\n\nAll payment decisions require human approval outside this workflow.\n\nFinal answer format:\nUse clear headings.\nUse short bullet points.\nDo not return JSON unless asked.\nDo not output escaped newline characters like \\n or \\n\\n.\n\nWhen Read Invoice Attachments returns readable CSV/text data, summarise the key rows or records in the final answer. Do not merely say the CSV was extracted. Include the most relevant names, dates, payment/status fields, amounts, or event details if present. If the CSV is long, summarise the top relevant rows and say it was truncated."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        480,
+        0
+      ],
+      "id": "b4f9b0dd-e2a7-4f90-b12b-92df3ff17fb5",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        224,
+        224
+      ],
+      "id": "97da8524-c64a-4119-8000-67b7d1c479cc",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "45q4b7TL1FhrfMl9",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Search BFC Gmail for emails related to invoices, bills, payment requests, receipts, contractor payments, supplier payments, overdue notices, wages, Xero, Clubworx, GoCardless, Stripe, Square, and financial obligations. This tool is read-only.",
+        "operation": "getAll",
+        "limit": 10,
+        "filters": {
+          "q": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Search', `Search BFC Gmail for emails related to invoices, bills, payment requests, receipts, contractor payments, supplier payments, overdue notices, wages, Xero, Clubworx, GoCardless, Stripe, Square, and financial obligations. This tool is read-only.`, 'string') }}"
+        }
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        224
+      ],
+      "id": "94dacfbd-f958-45e7-bd95-779b5ba63ab7",
+      "name": "Search Payment Emails",
+      "webhookId": "bb332562-1868-4375-a617-5ddbbff2afe4",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "bRzBJpTlCYHQbe4O",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Read the full contents of a specific BFC Gmail message using a Gmail message ID returned by the Gmail search tool. Use this to inspect invoice emails, payment requests, supplier emails, contractor emails, overdue notices, and financial obligation emails. This tool is read-only.",
+        "operation": "get",
+        "messageId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message_ID', ``, 'string') }}"
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.2,
+      "position": [
+        624,
+        224
+      ],
+      "id": "1a625f42-6b68-465c-94d5-3f57044ac925",
+      "name": "Read Payment Email",
+      "webhookId": "bccc6ec6-da78-45a9-9792-8034af0b0d12",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "bRzBJpTlCYHQbe4O",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "When calling this tool, the required workflow input is message_id. Always pass the Gmail message ID into message_id. Never use a generic field called input.\n\nDownload and extract readable contents from attachments belonging to a Gmail message.\n\nUse this when a payment-related BFC email contains an invoice, receipt, order confirmation, payment request, failed payment report, CSV, PDF, supplier document, contractor invoice, or other attachment needed to assess whether human payment review is required.\n\nThe Gmail message ID must come from the Gmail search tool during the current execution.\n\nThis tool is read-only. Do not use it for suspicious, executable, encrypted, or irrelevant attachments.",
+        "workflowId": {
+          "__rl": true,
+          "value": "1uDZbaWBflxm68Oe",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/1uDZbaWBflxm68Oe",
+          "cachedResultName": "BFC Email Attachment Reader Helper V2 - PDF Extraction"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "message_id": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('message_id', `Required. Use this exact field name: message_id. This must be a Gmail message ID, for example 19ebb3c1ff13baf0. Do not use a field called input. Do not pass the email subject. Only pass the Gmail message ID.`, 'string') }}"
+          },
+          "matchingColumns": [
+            "message_id"
+          ],
+          "schema": [
+            {
+              "id": "message_id",
+              "displayName": "message_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        768,
+        224
+      ],
+      "id": "356b3648-0117-4b4d-b33f-7c6ef5e127af",
+      "name": "Read Invoice Attachments"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Search BFC Xero invoices and bills to check invoice numbers, supplier/customer names, amounts, due dates, dates, references, and payment status. Use this to compare Gmail invoices, receipts, and payment requests against Xero records. This tool is read-only. Never create, approve, modify, delete, send, pay, reconcile, or mark anything as paid.\n\nIf no match is found, say “no matching record found in the returned Xero results.” Do not claim the item does not exist in Xero unless the search was complete and specific.",
+        "operation": "getAll",
+        "organizationId": "9b2b73cb-3767-4866-86d0-e00d139ea037",
+        "limit": 10,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.xeroTool",
+      "typeVersion": 1,
+      "position": [
+        896,
+        224
+      ],
+      "id": "3d101195-7955-407e-a00d-75e79ad2fa14",
+      "name": "Search Xero Records",
+      "credentials": {
+        "xeroOAuth2Api": {
+          "id": "eHosm9F4RBVccpsE",
+          "name": "Xero account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "request"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        272,
+        0
+      ],
+      "id": "067f501f-2e3a-425c-a97e-6fbcd583ff04",
+      "name": "When Executed by Another Workflow"
+    }
+  ],
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "request": "Review BFC payment-related Gmail and Xero items from the last 7 days. Return only human-review findings. Do not take action."
+        }
+      }
+    ]
+  },
+  "connections": {
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Payment Emails": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Payment Email": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Invoice Attachments": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Xero Records": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "8499bbd2-bc1c-449d-ba26-dc4794cf17ef",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6d0b1d4f2e06ca089fae6ebdc1cff54938a4dac58a9bed7f37ff54264808d416"
+  },
+  "nodeGroups": [],
+  "id": "eJrWBFNU5yhND4kd",
+  "tags": [
+    {
+      "updatedAt": "2026-06-14T06:31:14.919Z",
+      "createdAt": "2026-06-14T06:31:14.919Z",
+      "id": "XjXajirVuP0Bjvav",
+      "name": "BFC Helpers"
+    }
+  ]
+}

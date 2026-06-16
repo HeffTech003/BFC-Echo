@@ -1,0 +1,417 @@
+{
+  "name": "BFC Transaction Tracker Helper — callable",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "transaction_type"
+            },
+            {
+              "name": "direction"
+            },
+            {
+              "name": "supplier_or_customer"
+            },
+            {
+              "name": "amount"
+            },
+            {
+              "name": "due_date"
+            },
+            {
+              "name": "invoice_or_reference"
+            },
+            {
+              "name": "source_system"
+            },
+            {
+              "name": "evidence_summary"
+            },
+            {
+              "name": "xero_match"
+            },
+            {
+              "name": "attachment_status"
+            },
+            {
+              "name": "ai_payment_status"
+            },
+            {
+              "name": "human_payment_status"
+            },
+            {
+              "name": "confirmed_by"
+            },
+            {
+              "name": "confirmed_date"
+            },
+            {
+              "name": "risk_level"
+            },
+            {
+              "name": "recommended_next_action"
+            },
+            {
+              "name": "tracker_status"
+            },
+            {
+              "name": "notes"
+            },
+            {
+              "name": "source_id_or_link"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "1b23f85c-2e8b-471b-bf9a-0994e8fece63",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1jsgEPyi1RucoYE-Bf5Se_ov5fp3eAvAuFebrr-bM8gk",
+          "mode": "list",
+          "cachedResultName": "BFC Transaction Tracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1jsgEPyi1RucoYE-Bf5Se_ov5fp3eAvAuFebrr-bM8gk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1186645540,
+          "mode": "list",
+          "cachedResultName": "Transaction Tracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1jsgEPyi1RucoYE-Bf5Se_ov5fp3eAvAuFebrr-bM8gk/edit#gid=1186645540"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date Scanned": "={{ $now }}",
+            "Transaction Type": "={{ $json.transaction_type }}",
+            "Direction": "={{ $json.direction }}",
+            "Supplier / Customer": "={{ $json.supplier_or_customer }}",
+            "Amount": "={{ $json.amount }}",
+            "Due Date": "={{ $json.due_date }}",
+            "Invoice / Reference": "={{ $json.invoice_or_reference }}",
+            "Source System": "={{ $json.source_system }}",
+            "Evidence Summary": "={{ $json.evidence_summary }}",
+            "Xero Match": "={{ $json.xero_match }}",
+            "Attachment Status": "={{ $json.attachment_status }}",
+            "AI Payment Status": "={{ $json.ai_payment_status }}",
+            "Human Payment Status": "={{ $json.human_payment_status || \"not confirmed\" }}",
+            "Confirmed By": "={{ $json.confirmed_by }}",
+            "Confirmed Date": "={{ $json.confirmed_date }}",
+            "Risk Level": "={{ $json.risk_level }}",
+            "Recommended Next Action": "={{ $json.recommended_next_action }}",
+            "Tracker Status": "={{ $json.tracker_status || \"Waiting for BFC Team\" }}",
+            "Notes": "={{ $json.notes }}",
+            "Source ID / Link": "={{ $json.source_id_or_link }}",
+            "Created By": "Echo"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Date Scanned",
+              "displayName": "Date Scanned",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Transaction Type",
+              "displayName": "Transaction Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Direction",
+              "displayName": "Direction",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Supplier / Customer",
+              "displayName": "Supplier / Customer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Due Date",
+              "displayName": "Due Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Invoice / Reference",
+              "displayName": "Invoice / Reference",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Source System",
+              "displayName": "Source System",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Evidence Summary",
+              "displayName": "Evidence Summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Xero Match",
+              "displayName": "Xero Match",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Attachment Status",
+              "displayName": "Attachment Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "AI Payment Status",
+              "displayName": "AI Payment Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Human Payment Status",
+              "displayName": "Human Payment Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Confirmed By",
+              "displayName": "Confirmed By",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Confirmed Date",
+              "displayName": "Confirmed Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Risk Level",
+              "displayName": "Risk Level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Recommended Next Action",
+              "displayName": "Recommended Next Action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Tracker Status",
+              "displayName": "Tracker Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Source ID / Link",
+              "displayName": "Source ID / Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Created By",
+              "displayName": "Created By",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        208,
+        0
+      ],
+      "id": "fb134bb0-c0f0-45a3-91a7-b96ded7dca0f",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "CaoKD3EXIAUsqClz",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    success: true,\n    message: \"Transaction tracker item recorded successfully.\",\n    transaction_type: $json.transaction_type || \"\",\n    supplier_or_customer: $json.supplier_or_customer || \"\",\n    amount: $json.amount || \"\",\n    invoice_or_reference: $json.invoice_or_reference || \"\",\n    ai_payment_status: $json.ai_payment_status || \"\",\n    human_payment_status: $json.human_payment_status || \"not confirmed\",\n    tracker_status: $json.tracker_status || \"Waiting for BFC Team\"\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "e880307f-3196-4ef6-8788-db660aa18be2",
+      "name": "Return Tracker Result"
+    }
+  ],
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "transaction_type": "failed customer payment",
+          "direction": "money in",
+          "supplier_or_customer": "Test Member",
+          "amount": "$44.99",
+          "due_date": "",
+          "invoice_or_reference": "GoCardless failed payment test",
+          "source_system": "GoCardless / Gmail notification",
+          "evidence_summary": "A failed customer payment notification was identified for a test member. AI has not confirmed whether the payment was later recovered, retried, or manually resolved.",
+          "xero_match": "not checked",
+          "attachment_status": "no attachment",
+          "ai_payment_status": "failed payment observed; final status needs human review",
+          "human_payment_status": "not confirmed",
+          "confirmed_by": "",
+          "confirmed_date": "",
+          "risk_level": "medium",
+          "recommended_next_action": "BFC Team should check GoCardless/Clubworx and confirm whether the payment was retried, recovered, or still outstanding before contacting the member.",
+          "tracker_status": "Waiting for BFC Team",
+          "notes": "Second test entry for failed customer payment tracking.",
+          "source_id_or_link": "GoCardless failed payment test"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Return Tracker Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "608d5eab-b187-4f3d-b7f7-ef2359ba24a3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6d0b1d4f2e06ca089fae6ebdc1cff54938a4dac58a9bed7f37ff54264808d416"
+  },
+  "nodeGroups": [],
+  "id": "5YPKMF7lDOli3niB",
+  "tags": [
+    {
+      "updatedAt": "2026-06-14T06:31:14.919Z",
+      "createdAt": "2026-06-14T06:31:14.919Z",
+      "id": "XjXajirVuP0Bjvav",
+      "name": "BFC Helpers"
+    }
+  ]
+}

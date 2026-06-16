@@ -1,0 +1,201 @@
+{
+  "name": "BFC Transaction Tracker Search Helper — callable",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "transaction_type"
+            },
+            {
+              "name": "direction"
+            },
+            {
+              "name": "supplier_or_customer"
+            },
+            {
+              "name": "amount"
+            },
+            {
+              "name": "due_date"
+            },
+            {
+              "name": "invoice_or_reference"
+            },
+            {
+              "name": "source_system"
+            },
+            {
+              "name": "evidence_summary"
+            },
+            {
+              "name": "xero_match"
+            },
+            {
+              "name": "attachment_status"
+            },
+            {
+              "name": "ai_payment_status"
+            },
+            {
+              "name": "human_payment_status"
+            },
+            {
+              "name": "confirmed_by"
+            },
+            {
+              "name": "confirmed_date"
+            },
+            {
+              "name": "risk_level"
+            },
+            {
+              "name": "recommended_next_action"
+            },
+            {
+              "name": "tracker_status"
+            },
+            {
+              "name": "notes"
+            },
+            {
+              "name": "source_id_or_link"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "31767181-4d12-4736-9e6f-4ddadde3df87",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1jsgEPyi1RucoYE-Bf5Se_ov5fp3eAvAuFebrr-bM8gk",
+          "mode": "list",
+          "cachedResultName": "BFC Transaction Tracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1jsgEPyi1RucoYE-Bf5Se_ov5fp3eAvAuFebrr-bM8gk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1186645540,
+          "mode": "list",
+          "cachedResultName": "Transaction Tracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1jsgEPyi1RucoYE-Bf5Se_ov5fp3eAvAuFebrr-bM8gk/edit#gid=1186645540"
+        },
+        "filtersUI": {
+          "values": []
+        },
+        "options": {
+          "returnFirstMatch": false
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        208,
+        0
+      ],
+      "id": "7fc6bf2f-ff6c-40f5-92d6-b0c33403f514",
+      "name": "Search Transaction Tracker",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "CaoKD3EXIAUsqClz",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(item => item.json);\n\nconst total = rows.length;\n\nconst waiting = rows.filter(row =>\n  String(row[\"Tracker Status\"] || \"\").toLowerCase().includes(\"waiting\")\n);\n\nconst notConfirmed = rows.filter(row =>\n  String(row[\"Human Payment Status\"] || \"\").toLowerCase() === \"not confirmed\"\n);\n\nconst highRisk = rows.filter(row =>\n  [\"high\", \"urgent\"].includes(String(row[\"Risk Level\"] || \"\").toLowerCase())\n);\n\nconst failedPayments = rows.filter(row =>\n  String(row[\"Transaction Type\"] || \"\").toLowerCase().includes(\"failed\")\n);\n\nconst supplierInvoices = rows.filter(row =>\n  String(row[\"Transaction Type\"] || \"\").toLowerCase().includes(\"invoice\")\n);\n\nreturn [{\n  json: {\n    success: true,\n    message: \"Transaction tracker search completed.\",\n    total_rows_found: total,\n    waiting_for_bfc_team_count: waiting.length,\n    not_human_confirmed_count: notConfirmed.length,\n    high_or_urgent_risk_count: highRisk.length,\n    failed_payment_count: failedPayments.length,\n    supplier_invoice_count: supplierInvoices.length,\n    rows: rows.map(row => ({\n      date_scanned: row[\"Date Scanned\"] || \"\",\n      transaction_type: row[\"Transaction Type\"] || \"\",\n      direction: row[\"Direction\"] || \"\",\n      supplier_or_customer: row[\"Supplier / Customer\"] || \"\",\n      amount: row[\"Amount\"] || \"\",\n      due_date: row[\"Due Date\"] || \"\",\n      invoice_or_reference: row[\"Invoice / Reference\"] || \"\",\n      source_system: row[\"Source System\"] || \"\",\n      evidence_summary: row[\"Evidence Summary\"] || \"\",\n      xero_match: row[\"Xero Match\"] || \"\",\n      attachment_status: row[\"Attachment Status\"] || \"\",\n      ai_payment_status: row[\"AI Payment Status\"] || \"\",\n      human_payment_status: row[\"Human Payment Status\"] || \"\",\n      risk_level: row[\"Risk Level\"] || \"\",\n      recommended_next_action: row[\"Recommended Next Action\"] || \"\",\n      tracker_status: row[\"Tracker Status\"] || \"\",\n      notes: row[\"Notes\"] || \"\",\n      source_id_or_link: row[\"Source ID / Link\"] || \"\",\n      created_by: row[\"Created By\"] || \"\"\n    }))\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "c85cb381-37d5-4043-ae27-7ecc0d5de236",
+      "name": "Return Search Results"
+    }
+  ],
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "transaction_type": "failed customer payment",
+          "direction": "money in",
+          "supplier_or_customer": "Test Member",
+          "amount": "$44.99",
+          "due_date": "",
+          "invoice_or_reference": "GoCardless failed payment test",
+          "source_system": "GoCardless / Gmail notification",
+          "evidence_summary": "A failed customer payment notification was identified for a test member. AI has not confirmed whether the payment was later recovered, retried, or manually resolved.",
+          "xero_match": "not checked",
+          "attachment_status": "no attachment",
+          "ai_payment_status": "failed payment observed; final status needs human review",
+          "human_payment_status": "not confirmed",
+          "confirmed_by": "",
+          "confirmed_date": "",
+          "risk_level": "medium",
+          "recommended_next_action": "BFC Team should check GoCardless/Clubworx and confirm whether the payment was retried, recovered, or still outstanding before contacting the member.",
+          "tracker_status": "Waiting for BFC Team",
+          "notes": "Second test entry for failed customer payment tracking.",
+          "source_id_or_link": "GoCardless failed payment test"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Search Transaction Tracker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Transaction Tracker": {
+      "main": [
+        [
+          {
+            "node": "Return Search Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "994c4b3a-c93e-4ece-b116-d4419d4da23a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6d0b1d4f2e06ca089fae6ebdc1cff54938a4dac58a9bed7f37ff54264808d416"
+  },
+  "nodeGroups": [],
+  "id": "VSHJJX8GwgKaJRyP",
+  "tags": [
+    {
+      "updatedAt": "2026-06-14T06:31:14.919Z",
+      "createdAt": "2026-06-14T06:31:14.919Z",
+      "id": "XjXajirVuP0Bjvav",
+      "name": "BFC Helpers"
+    }
+  ]
+}

@@ -1,0 +1,190 @@
+{
+  "name": "BFC Email Attachment Reader Helper",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "message_id"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "35774d10-f748-499f-8dbf-f4d743cab472",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "url": "=https://gmail.googleapis.com/gmail/v1/users/me/messages/{{ $json.message_id }}?format=full",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "44118a44-d556-475b-b88a-4168eb037a60",
+      "name": "HTTP Request",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "bRzBJpTlCYHQbe4O",
+          "name": "Gmail OAuth2 API"
+        },
+        "googleOAuth2Api": {
+          "id": "S0vKQTlC8w4UD4hV",
+          "name": "Google account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://gmail.googleapis.com/gmail/v1/users/me/messages/{{ $json.messageId }}/attachments/{{ $json.attachmentId }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        624,
+        0
+      ],
+      "id": "abe30b24-4eb9-49b7-b828-f5bd75798c2f",
+      "name": "Download Attachment",
+      "credentials": {
+        "googleOAuth2Api": {
+          "id": "S0vKQTlC8w4UD4hV",
+          "name": "Google account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const base64url = $json.data;\n\nif (!base64url) {\n  return [{\n    json: {\n      success: false,\n      error: \"No attachment data found.\"\n    }\n  }];\n}\n\n// Gmail uses base64url encoding, so convert it to normal base64 first.\nconst base64 = base64url\n  .replace(/-/g, '+')\n  .replace(/_/g, '/');\n\nconst buffer = Buffer.from(base64, 'base64');\nconst text = buffer.toString('utf8');\n\n// Pull metadata from the previous Code node.\n// Your previous node is currently called \"Code in JavaScript\".\nconst meta = $items(\"Find Attachments\")[0].json;\n\nreturn [{\n  json: {\n    success: true,\n    filename: meta.filename || \"[UNKNOWN FILE]\",\n    mimeType: meta.mimeType || \"[UNKNOWN MIME TYPE]\",\n    messageId: meta.messageId || \"[UNKNOWN MESSAGE ID]\",\n    attachmentId: meta.attachmentId || \"[UNKNOWN ATTACHMENT ID]\",\n    attachmentText: text\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        832,
+        0
+      ],
+      "id": "ec40bb3d-8e85-4dc1-8325-c35dd54159ed",
+      "name": "Decode Attachment"
+    },
+    {
+      "parameters": {
+        "jsCode": "const message = $json;\n\nfunction findAttachments(part, results = []) {\n  if (!part) return results;\n\n  if (part.filename && part.body && part.body.attachmentId) {\n    results.push({\n      filename: part.filename,\n      mimeType: part.mimeType,\n      attachmentId: part.body.attachmentId,\n      size: part.body.size || null,\n      messageId: message.id,\n      threadId: message.threadId,\n      snippet: message.snippet || \"\"\n    });\n  }\n\n  if (part.parts && Array.isArray(part.parts)) {\n    for (const child of part.parts) {\n      findAttachments(child, results);\n    }\n  }\n\n  return results;\n}\n\nconst attachments = findAttachments(message.payload);\n\nif (attachments.length === 0) {\n  return [{\n    json: {\n      messageId: message.id,\n      foundAttachments: false,\n      note: \"No readable attachment metadata found in this Gmail message.\"\n    }\n  }];\n}\n\nreturn attachments.map(a => ({ json: a }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "43d4c60a-9182-45e9-acf2-ca0c9615d9d4",
+      "name": "Find Attachments"
+    },
+    {
+      "parameters": {
+        "jsCode": "const MAX_CHARS = 6000;\n\nconst rawText = $json.attachmentText || \"\";\nconst cleanedText = rawText\n  .replace(/\\r/g, \"\")\n  .replace(/\\n{3,}/g, \"\\n\\n\")\n  .trim();\n\nconst wasTruncated = cleanedText.length > MAX_CHARS;\nconst previewText = wasTruncated\n  ? cleanedText.slice(0, MAX_CHARS) + \"\\n\\n[TRUNCATED: attachment was longer than the safe preview limit.]\"\n  : cleanedText;\n\nreturn [{\n  json: {\n    success: $json.success,\n    filename: $json.filename,\n    mimeType: $json.mimeType,\n    messageId: $json.messageId,\n    attachmentCharacterCount: cleanedText.length,\n    attachmentWasTruncated: wasTruncated,\n    attachmentText: previewText,\n    note: wasTruncated\n      ? \"Attachment was downloaded and decoded, but only a safe preview was returned to prevent memory overload.\"\n      : \"Attachment was successfully downloaded and decoded.\"\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "311fba4d-9145-47d1-a0c1-2034266f8ff7",
+      "name": "Return Attachment Summary"
+    }
+  ],
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "message_id": "19ebc47c0cd6b6e6"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Find Attachments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Attachment": {
+      "main": [
+        [
+          {
+            "node": "Decode Attachment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Attachments": {
+      "main": [
+        [
+          {
+            "node": "Download Attachment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decode Attachment": {
+      "main": [
+        [
+          {
+            "node": "Return Attachment Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "a7c5a428-5dba-435a-a8e4-0b0e2b5cd300",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6d0b1d4f2e06ca089fae6ebdc1cff54938a4dac58a9bed7f37ff54264808d416"
+  },
+  "nodeGroups": [],
+  "id": "XO4qpBI7GTF4S7TQ",
+  "tags": []
+}
