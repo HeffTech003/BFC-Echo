@@ -16,13 +16,13 @@
         0,
         0
       ],
-      "id": "fc80700b-71d3-4f55-aa29-807a97f8af37",
-      "name": "Website Chat Webhook",
-      "webhookId": "a727aa90-1653-410a-b682-d3c54aa02908"
+      "id": "680ea74f-5f12-4a67-8b5f-4838fa6c0431",
+      "name": "BFC Chat Log Webhook",
+      "webhookId": "a31313bb-19fe-4c0a-91fa-cd36fa266a3f"
     },
     {
       "parameters": {
-        "jsCode": "// BFC Website Chat Logger — normalise incoming chat details\n// Tuned for the custom BFC website chat widget:\n//   { conversation_id, status, data:{firstName,lastName,email}, history:[{role,content}], page_url }\n// but stays flexible for other field names too.\n\nconst inc = ($json.body && typeof $json.body === 'object') ? $json.body : $json;\nconst data = (inc.data && typeof inc.data === 'object') ? inc.data : {};\n\nfunction pick(...keys) {\n  for (const k of keys) {\n    const v = inc[k];\n    if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim();\n  }\n  return '';\n}\n\n// Build a transcript from history[] (or messages[])\nlet transcript = pick('transcript', 'conversation', 'chat');\nconst hist = inc.history || inc.messages;\nif (!transcript && Array.isArray(hist)) {\n  transcript = hist\n    .map(m => `${m.role || m.sender || m.from || ''}: ${m.content || m.text || m.message || ''}`.trim())\n    .join('\\n');\n}\n\nconst status = pick('status'); // e.g. \"trial_requested\"\n\n// Contact details — prefer the structured data{} the AI returns\nlet name = pick('name', 'visitor_name', 'full_name', 'contact_name');\nif (!name) {\n  const fn = (data.firstName || '').trim();\n  const ln = (data.lastName || '').trim();\n  name = [fn, ln].filter(Boolean).join(' ');\n}\nlet email = pick('email', 'visitor_email', 'contact_email') || (data.email || '').trim();\nlet phone = pick('phone', 'visitor_phone', 'contact_phone', 'mobile') || (data.phone || '').trim();\n\n// Fallback: scrape contact details out of the transcript / raw payload\nconst blob = [transcript, JSON.stringify(inc)].join(' ');\nif (!email) { const m = blob.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}/); if (m) email = m[0]; }\nif (!phone) { const m = blob.match(/(\\+?\\d[\\d ()\\-]{7,}\\d)/); if (m) phone = m[0].trim(); }\n\nconst isTrial = status === 'trial_requested';\n\nconst topic = pick('topic', 'enquiry_topic', 'intent', 'subject', 'category')\n              || (isTrial ? 'Free trial request' : '');\nconst summary = pick('summary', 'enquiry_summary', 'message', 'question', 'last_message')\n                || transcript.slice(0, 800);\n\nlet isLead = pick('is_lead', 'lead');\nif (!isLead) isLead = (isTrial || email || phone) ? 'Yes' : 'No';\n\nconst urgency = pick('urgency', 'priority') || (isTrial ? 'High' : 'Normal');\nconst nextAction = pick('recommended_next_action', 'next_action', 'action')\n  || (isTrial ? 'Contact visitor to book / confirm free trial'\n     : (email || phone) ? 'Follow up with visitor'\n     : 'Review chat — no contact details captured');\n\nreturn [{\n  json: {\n    conversation_id: pick('conversation_id', 'session_id', 'chat_id', 'id'),\n    visitor_name: name,\n    email,\n    phone,\n    enquiry_topic: topic,\n    enquiry_summary: summary,\n    is_lead: isLead,\n    urgency,\n    recommended_next_action: nextAction,\n    page_url: pick('page_url', 'url', 'page', 'source_url'),\n    chatbot_source: pick('chatbot', 'source', 'widget', 'bot_name') || 'BFC Website Chatbot',\n    bot_status: status,\n    status: 'New'\n  }\n}];"
+        "jsCode": "// BFC Website Chat Logger — normalise incoming chat details\n// Receives POSTs from the BFC Public Chat Widget workflow for three AI statuses:\n//   trial_requested | issue_detected | unknown_question\n// Payload (built by the widget workflow's \"Build * Payload\" nodes), flexible field names:\n//   { conversation_id|session_id, status, data:{firstName,lastName,email}, history:[{role,content}], page_url, urgency, ... }\n\nconst inc = ($json.body && typeof $json.body === 'object') ? $json.body : $json;\nconst data = (inc.data && typeof inc.data === 'object') ? inc.data : {};\n\nfunction pick(...keys) {\n  for (const k of keys) {\n    const v = inc[k];\n    if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim();\n  }\n  return '';\n}\n\n// Build a transcript from history[] (or messages[])\nlet transcript = pick('transcript', 'conversation', 'chat');\nconst hist = inc.history || inc.messages;\nif (!transcript && Array.isArray(hist)) {\n  transcript = hist\n    .map(m => `${m.role || m.sender || m.from || ''}: ${m.content || m.text || m.message || ''}`.trim())\n    .join('\\n');\n}\n\nconst status    = pick('status'); // trial_requested | issue_detected | unknown_question | in_progress\nconst isTrial   = status === 'trial_requested';\nconst isIssue   = status === 'issue_detected';\nconst isUnknown = status === 'unknown_question';\n\n// Contact details — prefer the structured data{} the AI returns\nlet name = pick('name', 'visitor_name', 'full_name', 'contact_name');\nif (!name) {\n  const fn = (data.firstName || '').trim();\n  const ln = (data.lastName || '').trim();\n  name = [fn, ln].filter(Boolean).join(' ');\n}\nlet email = pick('email', 'visitor_email', 'contact_email') || (data.email || '').trim();\nlet phone = pick('phone', 'visitor_phone', 'contact_phone', 'mobile') || (data.phone || '').trim();\n\n// Fallback: scrape contact details out of the transcript / raw payload\nconst blob = [transcript, JSON.stringify(inc)].join(' ');\nif (!email) { const m = blob.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}/); if (m) email = m[0]; }\nif (!phone) { const m = blob.match(/(\\+?\\d[\\d ()\\-]{7,}\\d)/); if (m) phone = m[0].trim(); }\n\nconst topic = pick('topic', 'enquiry_topic', 'intent', 'subject', 'category')\n  || (isTrial ? 'Free trial request'\n     : isIssue ? 'Issue / complaint'\n     : isUnknown ? 'Unanswered question'\n     : '');\n\nconst summary = pick('summary', 'enquiry_summary', 'message', 'question', 'last_message')\n  || transcript.slice(0, 800);\n\nlet isLead = pick('is_lead', 'lead');\nif (!isLead) isLead = (isTrial || email || phone) ? 'Yes' : 'No';\n\nconst urgency = pick('urgency', 'priority')\n  || ((isTrial || isIssue) ? 'High' : 'Normal');\n\nconst nextAction = pick('recommended_next_action', 'next_action', 'action')\n  || (isTrial ? 'Contact visitor to book / confirm free trial'\n     : isIssue ? 'Review complaint and follow up with visitor'\n     : isUnknown ? 'Add an answer to the bot knowledge / system prompt'\n     : (email || phone) ? 'Follow up with visitor'\n     : 'Review chat — no contact details captured');\n\nreturn [{\n  json: {\n    conversation_id: pick('conversation_id', 'session_id', 'chat_id', 'id'),\n    visitor_name: name,\n    email,\n    phone,\n    enquiry_topic: topic,\n    enquiry_summary: summary,\n    is_lead: isLead,\n    urgency,\n    recommended_next_action: nextAction,\n    page_url: pick('page_url', 'url', 'page', 'source_url'),\n    chatbot_source: pick('chatbot', 'source', 'widget', 'bot_name') || 'BFC Website Chatbot',\n    bot_status: status,\n    status: 'New'\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -30,7 +30,7 @@
         220,
         0
       ],
-      "id": "26e2be49-ce53-477b-9fc4-94aee996022d",
+      "id": "fa038330-3128-4024-8c57-2282c8f97b08",
       "name": "Extract Chat Details"
     },
     {
@@ -45,9 +45,10 @@
         },
         "sheetName": {
           "__rl": true,
-          "value": "Website Chat Log",
-          "mode": "list",
-          "cachedResultName": "Website Chat Log"
+          "value": "1686368022",
+          "mode": "id",
+          "cachedResultName": "Website Chat Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1QZeQ_g1SroWTN8qRE9O-lPz_0VFAB4i9KmCpE5KqX4M/edit#gid=1686368022"
         },
         "columns": {
           "mappingMode": "defineBelow",
@@ -217,7 +218,7 @@
         440,
         0
       ],
-      "id": "b1f0a39e-af8d-49f5-bc0d-d2492d0ac7e5",
+      "id": "d2cbd7c1-84bd-4d20-9625-6767e1d66f3d",
       "name": "Append chat to sheet",
       "credentials": {
         "googleSheetsOAuth2Api": {
@@ -238,12 +239,12 @@
         660,
         0
       ],
-      "id": "5d35ebf7-2146-4662-862a-b3bf7fe773e7",
+      "id": "802583cd-1072-4826-8cd9-75fde77194f4",
       "name": "Respond Success"
     }
   ],
   "pinData": {
-    "Website Chat Webhook": [
+    "BFC Chat Log Webhook": [
       {
         "json": {
           "headers": {},
@@ -278,7 +279,7 @@
     ]
   },
   "connections": {
-    "Website Chat Webhook": {
+    "BFC Chat Log Webhook": {
       "main": [
         [
           {
@@ -314,15 +315,14 @@
   },
   "active": false,
   "settings": {
-    "executionOrder": "v1",
-    "binaryMode": "separate"
+    "executionOrder": "v1"
   },
-  "versionId": "d6c73a49-3182-419d-93e1-6140a8093f56",
+  "versionId": "2561ec1e-3ab3-498b-964e-94220e4a2fd6",
   "meta": {
     "templateCredsSetupCompleted": true
   },
   "nodeGroups": [],
-  "id": "f06a8ce3cff2477a",
+  "id": "taoaVYdeSWu2h9rW",
   "tags": [
     {
       "name": "BFC Helpers"
