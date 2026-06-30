@@ -16,13 +16,13 @@
         0,
         0
       ],
-      "id": "94bfea04-8a79-4b6b-91de-5adb42042e7c",
+      "id": "fc80700b-71d3-4f55-aa29-807a97f8af37",
       "name": "Website Chat Webhook",
-      "webhookId": "21b912b3-9b0f-42aa-b860-addd852c55ba"
+      "webhookId": "a727aa90-1653-410a-b682-d3c54aa02908"
     },
     {
       "parameters": {
-        "jsCode": "// BFC Website Chat Logger — normalise incoming chat details\n// Accepts a POST from any third-party chat widget. Fields are read flexibly\n// so the workflow works whatever the widget happens to call them.\n\nconst inc = ($json.body && typeof $json.body === 'object') ? $json.body : $json;\n\nfunction pick(...keys) {\n  for (const k of keys) {\n    const v = inc[k];\n    if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim();\n  }\n  return '';\n}\n\n// Build a transcript string if one wasn't supplied directly\nlet transcript = pick('transcript', 'conversation', 'history', 'chat');\nif (!transcript && Array.isArray(inc.messages)) {\n  transcript = inc.messages\n    .map(m => `${m.role || m.sender || m.from || ''}: ${m.text || m.message || m.content || ''}`.trim())\n    .join('\\n');\n}\n\nlet name  = pick('name', 'visitor_name', 'full_name', 'contact_name');\nlet email = pick('email', 'visitor_email', 'contact_email');\nlet phone = pick('phone', 'visitor_phone', 'contact_phone', 'mobile');\n\n// Fallback: scrape contact details out of the raw payload / transcript\nconst blob = [transcript, JSON.stringify(inc)].join(' ');\nif (!email) { const m = blob.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}/); if (m) email = m[0]; }\nif (!phone) { const m = blob.match(/(\\+?\\d[\\d ()\\-]{7,}\\d)/); if (m) phone = m[0].trim(); }\n\nconst topic   = pick('topic', 'enquiry_topic', 'intent', 'subject', 'category');\nconst summary = pick('summary', 'enquiry_summary', 'message', 'question', 'last_message') || transcript.slice(0, 800);\n\nlet isLead = pick('is_lead', 'lead');\nif (!isLead) isLead = (email || phone) ? 'Yes' : 'No';\n\nconst urgency    = pick('urgency', 'priority') || 'Normal';\nconst nextAction = pick('recommended_next_action', 'next_action', 'action')\n                   || ((email || phone) ? 'Follow up with visitor' : 'Review chat — no contact details captured');\n\nreturn [{\n  json: {\n    conversation_id: pick('conversation_id', 'session_id', 'chat_id', 'id'),\n    visitor_name: name,\n    email,\n    phone,\n    enquiry_topic: topic,\n    enquiry_summary: summary,\n    is_lead: isLead,\n    urgency,\n    recommended_next_action: nextAction,\n    page_url: pick('page_url', 'url', 'page', 'source_url'),\n    chatbot_source: pick('chatbot', 'source', 'widget', 'bot_name') || 'Website Chatbot',\n    status: 'New'\n  }\n}];"
+        "jsCode": "// BFC Website Chat Logger — normalise incoming chat details\n// Tuned for the custom BFC website chat widget:\n//   { conversation_id, status, data:{firstName,lastName,email}, history:[{role,content}], page_url }\n// but stays flexible for other field names too.\n\nconst inc = ($json.body && typeof $json.body === 'object') ? $json.body : $json;\nconst data = (inc.data && typeof inc.data === 'object') ? inc.data : {};\n\nfunction pick(...keys) {\n  for (const k of keys) {\n    const v = inc[k];\n    if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim();\n  }\n  return '';\n}\n\n// Build a transcript from history[] (or messages[])\nlet transcript = pick('transcript', 'conversation', 'chat');\nconst hist = inc.history || inc.messages;\nif (!transcript && Array.isArray(hist)) {\n  transcript = hist\n    .map(m => `${m.role || m.sender || m.from || ''}: ${m.content || m.text || m.message || ''}`.trim())\n    .join('\\n');\n}\n\nconst status = pick('status'); // e.g. \"trial_requested\"\n\n// Contact details — prefer the structured data{} the AI returns\nlet name = pick('name', 'visitor_name', 'full_name', 'contact_name');\nif (!name) {\n  const fn = (data.firstName || '').trim();\n  const ln = (data.lastName || '').trim();\n  name = [fn, ln].filter(Boolean).join(' ');\n}\nlet email = pick('email', 'visitor_email', 'contact_email') || (data.email || '').trim();\nlet phone = pick('phone', 'visitor_phone', 'contact_phone', 'mobile') || (data.phone || '').trim();\n\n// Fallback: scrape contact details out of the transcript / raw payload\nconst blob = [transcript, JSON.stringify(inc)].join(' ');\nif (!email) { const m = blob.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}/); if (m) email = m[0]; }\nif (!phone) { const m = blob.match(/(\\+?\\d[\\d ()\\-]{7,}\\d)/); if (m) phone = m[0].trim(); }\n\nconst isTrial = status === 'trial_requested';\n\nconst topic = pick('topic', 'enquiry_topic', 'intent', 'subject', 'category')\n              || (isTrial ? 'Free trial request' : '');\nconst summary = pick('summary', 'enquiry_summary', 'message', 'question', 'last_message')\n                || transcript.slice(0, 800);\n\nlet isLead = pick('is_lead', 'lead');\nif (!isLead) isLead = (isTrial || email || phone) ? 'Yes' : 'No';\n\nconst urgency = pick('urgency', 'priority') || (isTrial ? 'High' : 'Normal');\nconst nextAction = pick('recommended_next_action', 'next_action', 'action')\n  || (isTrial ? 'Contact visitor to book / confirm free trial'\n     : (email || phone) ? 'Follow up with visitor'\n     : 'Review chat — no contact details captured');\n\nreturn [{\n  json: {\n    conversation_id: pick('conversation_id', 'session_id', 'chat_id', 'id'),\n    visitor_name: name,\n    email,\n    phone,\n    enquiry_topic: topic,\n    enquiry_summary: summary,\n    is_lead: isLead,\n    urgency,\n    recommended_next_action: nextAction,\n    page_url: pick('page_url', 'url', 'page', 'source_url'),\n    chatbot_source: pick('chatbot', 'source', 'widget', 'bot_name') || 'BFC Website Chatbot',\n    bot_status: status,\n    status: 'New'\n  }\n}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -30,7 +30,7 @@
         220,
         0
       ],
-      "id": "a4584c8a-99fe-43db-b57b-a14da809b396",
+      "id": "26e2be49-ce53-477b-9fc4-94aee996022d",
       "name": "Extract Chat Details"
     },
     {
@@ -64,6 +64,7 @@
             "Recommended Next Action": "={{ $json.recommended_next_action }}",
             "Page URL": "={{ $json.page_url }}",
             "Chatbot / Source": "={{ $json.chatbot_source }}",
+            "Bot Status": "={{ $json.bot_status }}",
             "Status": "={{ $json.status || \"New\" }}",
             "Logged By": "Website Chat Logger"
           },
@@ -178,6 +179,15 @@
               "canBeUsedToMatch": true
             },
             {
+              "id": "Bot Status",
+              "displayName": "Bot Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
               "id": "Status",
               "displayName": "Status",
               "required": false,
@@ -207,7 +217,7 @@
         440,
         0
       ],
-      "id": "c95e69f5-0e42-47a4-8619-d8b8d9f03261",
+      "id": "b1f0a39e-af8d-49f5-bc0d-d2492d0ac7e5",
       "name": "Append chat to sheet",
       "credentials": {
         "googleSheetsOAuth2Api": {
@@ -228,7 +238,7 @@
         660,
         0
       ],
-      "id": "dd89d8ac-6244-4632-a53b-39e94ef383f3",
+      "id": "5d35ebf7-2146-4662-862a-b3bf7fe773e7",
       "name": "Respond Success"
     }
   ],
@@ -241,26 +251,27 @@
           "query": {},
           "body": {
             "conversation_id": "web-2026-0001",
-            "name": "Jordan Example",
-            "email": "jordan@example.com",
-            "phone": "0400 000 000",
-            "topic": "Membership enquiry",
-            "messages": [
+            "status": "trial_requested",
+            "data": {
+              "firstName": "Jordan",
+              "lastName": "Example",
+              "email": "jordan@example.com"
+            },
+            "history": [
               {
-                "role": "visitor",
-                "text": "Hi, how much is a kids muay thai membership?"
+                "role": "user",
+                "content": "Hi, can I do a free trial for kids muay thai?"
               },
               {
-                "role": "bot",
-                "text": "Our junior membership starts at $X/week. Can I grab your name and email?"
+                "role": "assistant",
+                "content": "Absolutely! Can I grab your name and email to book it?"
               },
               {
-                "role": "visitor",
-                "text": "Jordan, jordan@example.com, 0400 000 000"
+                "role": "user",
+                "content": "Jordan Example, jordan@example.com"
               }
             ],
-            "page_url": "https://bendigofightcentre.com/memberships",
-            "chatbot": "Website Chatbot"
+            "page_url": "https://bendigofightcentre.com/"
           }
         }
       }
@@ -306,12 +317,12 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "21549c5d-abfd-4aae-8a5d-547e89cb128b",
+  "versionId": "d6c73a49-3182-419d-93e1-6140a8093f56",
   "meta": {
     "templateCredsSetupCompleted": true
   },
   "nodeGroups": [],
-  "id": "0bbc7a731ba34a79",
+  "id": "f06a8ce3cff2477a",
   "tags": [
     {
       "name": "BFC Helpers"
