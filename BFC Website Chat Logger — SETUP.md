@@ -1,16 +1,28 @@
 # BFC Website Chat Logger — Setup Guide
 
-Records and stores the **key details** from chats your website chatbot has, into a
+Records and stores the **key details** from chats the BFC website chatbot has, into a
 Google Sheet — same pattern as your other BFC Echo trackers.
 
-It is delivered as an n8n workflow (`BFC Website Chat Logger.json`) that exposes a
-**webhook**. Your third-party chat widget on https://bendigofightcentre.com sends each
-finished conversation to that webhook, and the workflow writes a row to a new
-**`Website Chat Log`** tab in your existing **BFC Echo Tracker** spreadsheet.
+> **Status (live):** Deployed on the Railway n8n instance as **BFC Website Chat Logger**
+> (`taoaVYdeSWu2h9rW`). The main **BFC Public Chat Widget** workflow (`g7mQRlbx7Y6dadsh`)
+> calls this logger directly — there is no extra widget-side JS to add. This repo copy is a
+> version-controlled backup of that live workflow; re-import it to restore.
+
+It is an n8n workflow (`BFC Website Chat Logger.json`) that exposes a **webhook**. The chat
+widget workflow POSTs to it whenever the AI returns a loggable status, and the workflow
+writes a row to the **`Website Chat Log`** tab of the **BFC Echo Tracker** spreadsheet.
 
 ```
-Website chat widget  ──POST──▶  n8n Webhook  ──▶  Extract details  ──▶  Google Sheet row  ──▶  reply {success:true}
+BFC Public Chat Widget workflow  ──POST──▶  Logger Webhook  ──▶  Extract details  ──▶  Google Sheet row  ──▶  reply {success:true}
 ```
+
+**Logged statuses** (the AI sets these; `in_progress` is never logged):
+
+| status | When | How it's logged |
+|---|---|---|
+| `trial_requested` | Visitor books a free trial | Lead = Yes, Urgency = High, also triggers the prospect + Kaleb emails |
+| `issue_detected` | Complaint / negative sentiment / gap | Urgency = High |
+| `unknown_question` | Bot couldn't answer | Logged so Kaleb can fill the knowledge gap in the system prompt |
 
 ---
 
@@ -37,90 +49,66 @@ Website chat widget  ──POST──▶  n8n Webhook  ──▶  Extract detail
 The field-matching is deliberately flexible — it reads common alternative names
 (`visitor_email`/`email`, `session_id`/`conversation_id`, `history[]`/`messages[]`,
 and the AI's `data:{firstName,lastName,email}`), and if only a transcript is sent it
-will still scrape out an email/phone. When `status` is `trial_requested`, the row is
-marked as a lead with High urgency and "Contact visitor to book / confirm free trial".
+will still scrape out an email/phone. `trial_requested` and `issue_detected` are marked
+High urgency; each status gets a sensible topic and recommended next action.
 
 ---
 
-## One-time setup (≈5 min)
+## How it's wired (live)
 
-1. **Create the sheet tab.** Open the **BFC Echo Tracker** spreadsheet and add a new tab
-   named exactly `Website Chat Log`. Put these headers in row 1 (left → right):
+The logging is done **server-side inside the BFC Public Chat Widget workflow** — there is
+no extra JavaScript in the WordPress widget. The widget posts each message to the chat
+workflow (`/webhook/bfc-public-chat`); the workflow asks OpenAI for a reply, and when the
+AI returns a loggable `status` it builds a payload and POSTs it to this logger:
 
-   `Date / Time | Conversation ID | Visitor Name | Email | Phone | Enquiry Topic | Enquiry Summary | Is Lead | Urgency | Recommended Next Action | Page URL | Chatbot / Source | Bot Status | Status | Logged By`
-
-2. **Import the workflow.** In n8n: *Workflows → Import from File →* `BFC Website Chat Logger.json`.
-
-3. **Reconnect the two pickers** (import can't keep them bound):
-   - **Append chat to sheet** node → confirm the **Google Sheets** credential
-     (`Google Sheets OAuth2 API`), the document **BFC Echo Tracker**, and select the
-     **`Website Chat Log`** tab from the dropdown.
-
-4. **Activate** the workflow (toggle top-right). The webhook is then live at:
-
-   ```
-   https://n8n-production-eaabe.up.railway.app/webhook/bfc-website-chat-log
-   ```
-
-5. **Test it** from a terminal:
-
-   ```bash
-   curl -X POST https://n8n-production-eaabe.up.railway.app/webhook/bfc-website-chat-log \
-     -H "Content-Type: application/json" \
-     -d '{
-       "conversation_id":"test-1",
-       "status":"trial_requested",
-       "data":{"firstName":"Test","lastName":"Visitor","email":"test@example.com"},
-       "history":[
-         {"role":"user","content":"Can I do a free trial for kids muay thai?"},
-         {"role":"assistant","content":"Sure! Can I grab your name and email?"}
-       ],
-       "page_url":"https://bendigofightcentre.com/"
-     }'
-   ```
-
-   You should get `{"success":true,...}` and a new row in the sheet.
-
----
-
-## Connecting the BFC website widget (custom HTML/JS via WPCode)
-
-The widget already POSTs every message to `/webhook/bfc-public-chat` with a `history`
-array, and the AI returns `status: "trial_requested"` + `data:{firstName,lastName,email}`
-when a trial is captured. To log a chat, fire a **second** POST to the logger webhook.
-
-**Recommended trigger: log when a trial is captured** (one clean lead row per visitor,
-no row-per-message noise). Inside the widget's `sendMessage`, after the AI reply is parsed:
-
-```js
-// after you have the AI response object `res` and the running `history` array
-if (res.status === "trial_requested") {
-  fetch("https://n8n-production-eaabe.up.railway.app/webhook/bfc-website-chat-log", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      conversation_id: conversationId,   // whatever id/session the widget uses
-      status: res.status,                // "trial_requested"
-      data: res.data,                    // { firstName, lastName, email }
-      history: history,                  // full [{role, content}] array
-      page_url: location.href,
-      chatbot: "BFC Website Chatbot"
-    })
-  }).catch(() => {});                     // fire-and-forget; never blocks the chat
-}
+```
+BFC Public Chat Widget (g7mQRlbx7Y6dadsh)
+  └─ Trial Requested?  ──true──▶ Build Trial Payload   ─▶ Log Trial   ─┐
+  └─ Unknown Question? ──true──▶ Build Unknown Payload ─▶ Log Unknown ─┼─▶  POST  ──▶  this logger
+  └─ Issue Detected?   ──true──▶ Build Issue Payload   ─▶ Log Issue   ─┘
 ```
 
-The fields map straight onto the sheet — no extra mapping needed. The logger also
-auto-fills topic = "Free trial request", Is Lead = Yes, Urgency = High, and the
-follow-up action for `trial_requested`.
+Logger webhook: `https://n8n-production-eaabe.up.railway.app/webhook/bfc-website-chat-log`
 
-**Optional: also log a summary at conversation end.** If you'd rather capture every
-conversation (not just trials), call the same `fetch` when the chat window closes / goes
-idle, sending `{ conversation_id, history, page_url }`. The workflow will scrape any
-email/phone from the transcript and mark it a lead only if contact details were found.
+### Sheet target (live config)
 
-CORS is already allowed (`*`) so the browser widget can post directly. To lock it down,
-set **Allowed Origins (CORS)** on the webhook node to `https://bendigofightcentre.com`.
+- Spreadsheet: **BFC Echo Tracker** — `1QZeQ_g1SroWTN8qRE9O-lPz_0VFAB4i9KmCpE5KqX4M`
+- Tab: **Website Chat Log** — gid `1686368022`, selected in the Google Sheets node using
+  **By ID** mode (numeric gid), not the name dropdown.
+
+---
+
+## Restoring / re-importing this backup
+
+This repo file mirrors the live `taoaVYdeSWu2h9rW` workflow. To restore it:
+
+1. In n8n: *Workflows → Import from File →* `BFC Website Chat Logger.json`.
+2. On the **Append chat to sheet** node, re-select the **Google Sheets OAuth2** credential,
+   the **BFC Echo Tracker** document, and the **Website Chat Log** tab (By ID, gid `1686368022`).
+3. Activate. Per the instance's quirk, after any API `PUT` you must **Unpublish → Publish in
+   the UI** to re-register the webhook (the API activate/deactivate endpoints return 403).
+
+### Manual test (run from a machine that can reach the n8n host)
+
+```bash
+curl -X POST https://n8n-production-eaabe.up.railway.app/webhook/bfc-website-chat-log \
+  -H "Content-Type: application/json" \
+  -d '{
+    "conversation_id":"test-1",
+    "status":"trial_requested",
+    "data":{"firstName":"Test","lastName":"Visitor","email":"test@example.com"},
+    "history":[
+      {"role":"user","content":"Can I do a free trial for kids muay thai?"},
+      {"role":"assistant","content":"Sure! Can I grab your name and email?"}
+    ],
+    "page_url":"https://bendigofightcentre.com/"
+  }'
+```
+
+Expect `{"success":true,...}` and a new row in the sheet. (Delete the test row afterwards.)
+
+> Note: CORS is allowed (`*`) on the webhook so a browser could post directly, but the live
+> design posts from the chat workflow server-side, which is the safer path.
 
 ---
 
