@@ -30,12 +30,15 @@ Website chat widget  ──POST──▶  n8n Webhook  ──▶  Extract detail
 | Recommended Next Action | e.g. "Follow up with visitor" |
 | Page URL | The page the chat happened on |
 | Chatbot / Source | Which widget sent it |
+| Bot Status | The widget's status flag, e.g. `trial_requested` |
 | Status | Starts as `New` for the BFC team to work |
 | Logged By | Always `Website Chat Logger` |
 
 The field-matching is deliberately flexible — it reads common alternative names
-(`visitor_email`/`email`, `session_id`/`conversation_id`, `messages[]`, etc.), and if
-the widget only sends a transcript it will still scrape out an email/phone.
+(`visitor_email`/`email`, `session_id`/`conversation_id`, `history[]`/`messages[]`,
+and the AI's `data:{firstName,lastName,email}`), and if only a transcript is sent it
+will still scrape out an email/phone. When `status` is `trial_requested`, the row is
+marked as a lead with High urgency and "Contact visitor to book / confirm free trial".
 
 ---
 
@@ -44,7 +47,7 @@ the widget only sends a transcript it will still scrape out an email/phone.
 1. **Create the sheet tab.** Open the **BFC Echo Tracker** spreadsheet and add a new tab
    named exactly `Website Chat Log`. Put these headers in row 1 (left → right):
 
-   `Date / Time | Conversation ID | Visitor Name | Email | Phone | Enquiry Topic | Enquiry Summary | Is Lead | Urgency | Recommended Next Action | Page URL | Chatbot / Source | Status | Logged By`
+   `Date / Time | Conversation ID | Visitor Name | Email | Phone | Enquiry Topic | Enquiry Summary | Is Lead | Urgency | Recommended Next Action | Page URL | Chatbot / Source | Bot Status | Status | Logged By`
 
 2. **Import the workflow.** In n8n: *Workflows → Import from File →* `BFC Website Chat Logger.json`.
 
@@ -53,26 +56,26 @@ the widget only sends a transcript it will still scrape out an email/phone.
      (`Google Sheets OAuth2 API`), the document **BFC Echo Tracker**, and select the
      **`Website Chat Log`** tab from the dropdown.
 
-4. **Activate** the workflow (toggle top-right). Open the **Website Chat Webhook** node and
-   copy the **Production URL** — it looks like:
+4. **Activate** the workflow (toggle top-right). The webhook is then live at:
 
    ```
-   https://<your-n8n-host>/webhook/bfc-website-chat-log
+   https://n8n-production-eaabe.up.railway.app/webhook/bfc-website-chat-log
    ```
 
 5. **Test it** from a terminal:
 
    ```bash
-   curl -X POST https://<your-n8n-host>/webhook/bfc-website-chat-log \
+   curl -X POST https://n8n-production-eaabe.up.railway.app/webhook/bfc-website-chat-log \
      -H "Content-Type: application/json" \
      -d '{
        "conversation_id":"test-1",
-       "name":"Test Visitor",
-       "email":"test@example.com",
-       "phone":"0400 000 000",
-       "topic":"Membership enquiry",
-       "summary":"Asked about junior muay thai pricing",
-       "page_url":"https://bendigofightcentre.com/memberships"
+       "status":"trial_requested",
+       "data":{"firstName":"Test","lastName":"Visitor","email":"test@example.com"},
+       "history":[
+         {"role":"user","content":"Can I do a free trial for kids muay thai?"},
+         {"role":"assistant","content":"Sure! Can I grab your name and email?"}
+       ],
+       "page_url":"https://bendigofightcentre.com/"
      }'
    ```
 
@@ -80,64 +83,44 @@ the widget only sends a transcript it will still scrape out an email/phone.
 
 ---
 
-## Connecting your chat widget
+## Connecting the BFC website widget (custom HTML/JS via WPCode)
 
-Send a single `POST` (JSON) to the webhook when a conversation ends (or when a contact
-detail is captured). Minimum useful payload:
+The widget already POSTs every message to `/webhook/bfc-public-chat` with a `history`
+array, and the AI returns `status: "trial_requested"` + `data:{firstName,lastName,email}`
+when a trial is captured. To log a chat, fire a **second** POST to the logger webhook.
 
-```json
-{
-  "conversation_id": "abc-123",
-  "name": "Jordan",
-  "email": "jordan@example.com",
-  "phone": "0400 000 000",
-  "topic": "Membership enquiry",
-  "summary": "Wants junior class times and pricing",
-  "page_url": "https://bendigofightcentre.com/memberships"
+**Recommended trigger: log when a trial is captured** (one clean lead row per visitor,
+no row-per-message noise). Inside the widget's `sendMessage`, after the AI reply is parsed:
+
+```js
+// after you have the AI response object `res` and the running `history` array
+if (res.status === "trial_requested") {
+  fetch("https://n8n-production-eaabe.up.railway.app/webhook/bfc-website-chat-log", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      conversation_id: conversationId,   // whatever id/session the widget uses
+      status: res.status,                // "trial_requested"
+      data: res.data,                    // { firstName, lastName, email }
+      history: history,                  // full [{role, content}] array
+      page_url: location.href,
+      chatbot: "BFC Website Chatbot"
+    })
+  }).catch(() => {});                     // fire-and-forget; never blocks the chat
 }
 ```
 
-You can instead send the whole conversation and let the workflow do the extraction:
+The fields map straight onto the sheet — no extra mapping needed. The logger also
+auto-fills topic = "Free trial request", Is Lead = Yes, Urgency = High, and the
+follow-up action for `trial_requested`.
 
-```json
-{
-  "conversation_id": "abc-123",
-  "messages": [
-    {"role": "visitor", "text": "How much for kids muay thai?"},
-    {"role": "bot",     "text": "Junior is $X/week — your name & email?"},
-    {"role": "visitor", "text": "Jordan, jordan@example.com"}
-  ],
-  "page_url": "https://bendigofightcentre.com/memberships"
-}
-```
+**Optional: also log a summary at conversation end.** If you'd rather capture every
+conversation (not just trials), call the same `fetch` when the chat window closes / goes
+idle, sending `{ conversation_id, history, page_url }`. The workflow will scrape any
+email/phone from the transcript and mark it a lead only if contact details were found.
 
-### Per-platform pointers
-
-- **Tidio / Crisp / Intercom / tawk.to / Chatbase / Voiceflow / Botpress, etc.** — use the
-  vendor's *Webhook* / *Outbound integration* (sometimes called "Zapier/Make/HTTP" or
-  "post-chat webhook"). Paste the webhook URL above and map the fields you collect to the
-  JSON keys listed in *What gets captured*.
-- **No native webhook?** Route it through Zapier/Make: trigger = "new conversation/lead in
-  <widget>", action = "Webhook POST" to the URL above.
-- **Custom JS chat widget** — drop this in at the end of a conversation:
-
-  ```html
-  <script>
-  function logBfcChat(details) {
-    return fetch("https://<your-n8n-host>/webhook/bfc-website-chat-log", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(details)
-    });
-  }
-  // e.g. logBfcChat({ conversation_id, name, email, phone, topic, summary,
-  //                   page_url: location.href });
-  </script>
-  ```
-
-CORS is already allowed (`*`) so a browser widget can post directly. If you prefer to lock
-it down, set **Allowed Origins (CORS)** on the webhook node to
-`https://bendigofightcentre.com`.
+CORS is already allowed (`*`) so the browser widget can post directly. To lock it down,
+set **Allowed Origins (CORS)** on the webhook node to `https://bendigofightcentre.com`.
 
 ---
 
