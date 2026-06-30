@@ -1,0 +1,673 @@
+{
+  "name": "BFC Supplier Invoice Scanner",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "5682e005-4e84-4f94-a3e9-6e85caa67b2f",
+      "name": "Daily 7am"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "getAll",
+        "returnAll": false,
+        "limit": 25,
+        "simple": true,
+        "filters": {
+          "q": "has:attachment -from:me newer_than:14d (invoice OR \"tax invoice\" OR \"amount due\" OR statement OR remittance OR bill) -label:BFC-Invoice-Logged -label:BFC-Invoice-Review"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        220,
+        0
+      ],
+      "id": "2862f813-bd01-4a1d-91ad-d92a2448e4cc",
+      "name": "Search Invoice Emails",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "bRzBJpTlCYHQbe4O",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "1uDZbaWBflxm68Oe",
+          "mode": "list",
+          "cachedResultName": "BFC Email Attachment Reader Helper V2 - PDF Extraction"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "message_id": "={{ $json.id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "message_id",
+              "displayName": "message_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        440,
+        0
+      ],
+      "id": "5668a197-2759-42e7-832c-9f6a67208dc9",
+      "name": "Read Attachment"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Combine the email + extracted attachment text into an OpenAI request body\nconst email = $('Search Invoice Emails').item.json;\nconst att = $json;\nconst attText = (typeof att === 'object') ? JSON.stringify(att).slice(0, 6000) : String(att).slice(0, 6000);\n\nconst system = \"You extract structured data from a supplier invoice for Bendigo Fight Centre. \"\n  + \"Return JSON only with keys: supplier, amount, currency, gst, due_date, invoice_number, \"\n  + \"description, confidence (high|medium|low), reason_if_unsure. Never invent an amount - leave \"\n  + \"it blank if not clearly stated. If the text is empty/unreadable or it is clearly not an \"\n  + \"invoice, set confidence to low.\";\n\nconst user = `EMAIL FROM: ${email.From || email.from || ''}\\n`\n  + `SUBJECT: ${email.Subject || email.subject || ''}\\n`\n  + `DATE: ${email.date || ''}\\n\\nATTACHMENT / EMAIL TEXT:\\n${attText}`;\n\nconst body = JSON.stringify({\n  model: \"gpt-4o\",\n  temperature: 0,\n  response_format: { type: \"json_object\" },\n  messages: [ { role: \"system\", content: system }, { role: \"user\", content: user } ]\n});\n\nreturn [{ json: {\n  openai_body: body,\n  email_id: email.id,\n  email_from: email.From || email.from || '',\n  email_subject: email.Subject || email.subject || '',\n  email_date: email.date || ''\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        0
+      ],
+      "id": "b2947d72-4269-4eef-a378-bba6641a1e77",
+      "name": "Build Extraction Input"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.openai_body }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        0
+      ],
+      "id": "4d7a0050-647d-4094-8f18-873c08cde794",
+      "name": "Extract Invoice Fields (OpenAI)",
+      "credentials": {
+        "openAiApi": {
+          "id": "45q4b7TL1FhrfMl9",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse the AI JSON and map to BFC Transaction Tracker fields\nconst res = $json;\nlet content = '';\ntry { content = res.choices[0].message.content; } catch (e) {}\nlet p = {};\ntry { p = JSON.parse(content); } catch (e) { p = { confidence: 'low', reason_if_unsure: 'Could not parse AI response' }; }\n\nconst ctx = $('Build Extraction Input').item.json;\nconst amount = (p.amount || '').toString().trim();\nconst conf = (p.confidence || 'low').toString().toLowerCase();\nconst needs_review = (conf === 'low') || !amount;\nconst supplier = (p.supplier || '').toString().trim() || ctx.email_from;\n\nconst evidence = `Invoice from ${supplier} for ${amount || '(amount unreadable)'}`\n  + (p.due_date ? `, due ${p.due_date}` : '')\n  + `. Email subject: ${ctx.email_subject}.`\n  + (p.reason_if_unsure ? ` Note: ${p.reason_if_unsure}` : '');\n\nreturn [{ json: {\n  transaction_type: 'supplier invoice',\n  direction: 'money out',\n  supplier_or_customer: supplier,\n  amount: amount,\n  due_date: p.due_date || '',\n  invoice_or_reference: p.invoice_number || '',\n  source_system: 'Gmail / Supplier Invoice Scanner',\n  evidence_summary: evidence,\n  xero_match: 'not checked',\n  attachment_status: needs_review ? 'no readable text / uncertain' : 'read',\n  ai_payment_status: 'invoice received; payment not confirmed',\n  human_payment_status: 'not confirmed',\n  confirmed_by: '',\n  confirmed_date: '',\n  risk_level: needs_review ? 'medium' : 'low',\n  recommended_next_action: needs_review\n    ? 'BFC Team to manually open the invoice email, confirm the amount, then schedule/confirm payment.'\n    : 'BFC Team to verify invoice and schedule/confirm payment.',\n  tracker_status: 'Pending Review',\n  notes: `AI confidence: ${conf}.` + (p.gst ? ` GST: ${p.gst}.` : '') + (p.description ? ` ${p.description}` : ''),\n  source_id_or_link: `https://mail.google.com/mail/u/0/#all/${ctx.email_id}`,\n  email_id: ctx.email_id,\n  needs_review: needs_review,\n  _digest_supplier: supplier,\n  _digest_amount: amount || '(unreadable)',\n  _digest_due: p.due_date || '',\n  _digest_status: needs_review ? 'Pending Review - needs manual read' : 'Pending Review'\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        0
+      ],
+      "id": "ad8826e7-f4dc-49fd-8070-63bc0c55e8b4",
+      "name": "Parse & Map Invoice"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "5YPKMF7lDOli3niB",
+          "mode": "list",
+          "cachedResultName": "BFC Transaction Tracker Helper — callable"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "transaction_type": "={{ $json.transaction_type }}",
+            "direction": "={{ $json.direction }}",
+            "supplier_or_customer": "={{ $json.supplier_or_customer }}",
+            "amount": "={{ $json.amount }}",
+            "due_date": "={{ $json.due_date }}",
+            "invoice_or_reference": "={{ $json.invoice_or_reference }}",
+            "source_system": "={{ $json.source_system }}",
+            "evidence_summary": "={{ $json.evidence_summary }}",
+            "xero_match": "={{ $json.xero_match }}",
+            "attachment_status": "={{ $json.attachment_status }}",
+            "ai_payment_status": "={{ $json.ai_payment_status }}",
+            "human_payment_status": "={{ $json.human_payment_status }}",
+            "confirmed_by": "={{ $json.confirmed_by }}",
+            "confirmed_date": "={{ $json.confirmed_date }}",
+            "risk_level": "={{ $json.risk_level }}",
+            "recommended_next_action": "={{ $json.recommended_next_action }}",
+            "tracker_status": "={{ $json.tracker_status }}",
+            "notes": "={{ $json.notes }}",
+            "source_id_or_link": "={{ $json.source_id_or_link }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "transaction_type",
+              "displayName": "transaction_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "direction",
+              "displayName": "direction",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "supplier_or_customer",
+              "displayName": "supplier_or_customer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "amount",
+              "displayName": "amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "due_date",
+              "displayName": "due_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "invoice_or_reference",
+              "displayName": "invoice_or_reference",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "source_system",
+              "displayName": "source_system",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "evidence_summary",
+              "displayName": "evidence_summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "xero_match",
+              "displayName": "xero_match",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "attachment_status",
+              "displayName": "attachment_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ai_payment_status",
+              "displayName": "ai_payment_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "human_payment_status",
+              "displayName": "human_payment_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "confirmed_by",
+              "displayName": "confirmed_by",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "confirmed_date",
+              "displayName": "confirmed_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "risk_level",
+              "displayName": "risk_level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "recommended_next_action",
+              "displayName": "recommended_next_action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tracker_status",
+              "displayName": "tracker_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "source_id_or_link",
+              "displayName": "source_id_or_link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1320,
+        0
+      ],
+      "id": "2ed165a4-b42b-4783-9b40-475fdeb20bf0",
+      "name": "Record Invoice"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "393f9a7a-0924-40f0-a7d2-fc24cd8c739b",
+              "leftValue": "={{ $('Parse & Map Invoice').item.json.needs_review }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        0
+      ],
+      "id": "0c8636db-ee8e-4e3d-93e4-d7c452ea282d",
+      "name": "Needs Review?"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "addLabels",
+        "messageId": "={{ $('Parse & Map Invoice').item.json.email_id }}",
+        "labelIds": []
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1760,
+        -120
+      ],
+      "id": "64a88de2-ac94-454f-b330-24d77e690304",
+      "name": "Label: Needs Review",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "bRzBJpTlCYHQbe4O",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "addLabels",
+        "messageId": "={{ $('Parse & Map Invoice').item.json.email_id }}",
+        "labelIds": []
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1760,
+        120
+      ],
+      "id": "8376b5e5-16b7-47c9-8d72-1621ada68a93",
+      "name": "Label: Logged",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "bRzBJpTlCYHQbe4O",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: $('Parse & Map Invoice').item.json }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        0
+      ],
+      "id": "2b53802d-506f-4c15-a5e3-b0322ea05e29",
+      "name": "Collect Row"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        2200,
+        0
+      ],
+      "id": "8a3d156f-7e47-460a-9280-51f31202245c",
+      "name": "Aggregate Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $json.data || [];\nconst today = new Date().toLocaleDateString('en-AU');\nconst lines = rows.map(r =>\n  `- ${r._digest_supplier} — ${r._digest_amount}` +\n  (r._digest_due ? ` (due ${r._digest_due})` : '') +\n  ` [${r._digest_status}]`\n);\nconst body =\n  `BFC Supplier Invoice Scan — ${today}\\n\\n` +\n  `${rows.length} invoice(s) recorded to the Transaction Tracker with status \"Pending Review\":\\n\\n` +\n  `${lines.join('\\n')}\\n\\n` +\n  `Please review and confirm each one before paying, in the BFC Transaction Tracker sheet.\\n` +\n  `(Auto-generated by the Supplier Invoice Scanner.)`;\nreturn [{ json: { subject: `BFC: ${rows.length} supplier invoice(s) scanned (${today})`, body } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2420,
+        0
+      ],
+      "id": "d458d20e-d049-4be2-bfb3-815f006c424d",
+      "name": "Build Digest"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "bendigofightcentre@gmail.com",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.body }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2640,
+        0
+      ],
+      "id": "04474703-bd01-4bef-8b11-671790925415",
+      "name": "Send Daily Digest",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "bRzBJpTlCYHQbe4O",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Daily 7am": {
+      "main": [
+        [
+          {
+            "node": "Search Invoice Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Invoice Emails": {
+      "main": [
+        [
+          {
+            "node": "Read Attachment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Attachment": {
+      "main": [
+        [
+          {
+            "node": "Build Extraction Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Extraction Input": {
+      "main": [
+        [
+          {
+            "node": "Extract Invoice Fields (OpenAI)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Invoice Fields (OpenAI)": {
+      "main": [
+        [
+          {
+            "node": "Parse & Map Invoice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse & Map Invoice": {
+      "main": [
+        [
+          {
+            "node": "Record Invoice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Invoice": {
+      "main": [
+        [
+          {
+            "node": "Needs Review?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs Review?": {
+      "main": [
+        [
+          {
+            "node": "Label: Needs Review",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Label: Logged",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Label: Needs Review": {
+      "main": [
+        [
+          {
+            "node": "Collect Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Label: Logged": {
+      "main": [
+        [
+          {
+            "node": "Collect Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Row": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Results": {
+      "main": [
+        [
+          {
+            "node": "Build Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Digest": {
+      "main": [
+        [
+          {
+            "node": "Send Daily Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "b3889d85-5483-420e-80af-f2ae8f32109a",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "id": "caa6db95699f4808",
+  "tags": [
+    {
+      "name": "BFC Helpers"
+    }
+  ]
+}
