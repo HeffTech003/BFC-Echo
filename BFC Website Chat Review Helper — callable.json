@@ -1,0 +1,129 @@
+{
+  "name": "BFC Website Chat Review Helper — callable",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "focus"
+            },
+            {
+              "name": "request"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "942c2f72-7f18-431d-958f-8fffc4b70042",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1QZeQ_g1SroWTN8qRE9O-lPz_0VFAB4i9KmCpE5KqX4M",
+          "mode": "list",
+          "cachedResultName": "BFC Echo Tracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1QZeQ_g1SroWTN8qRE9O-lPz_0VFAB4i9KmCpE5KqX4M/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "1686368022",
+          "mode": "id",
+          "cachedResultName": "Website Chat Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1QZeQ_g1SroWTN8qRE9O-lPz_0VFAB4i9KmCpE5KqX4M/edit#gid=1686368022"
+        },
+        "filtersUI": {
+          "values": []
+        },
+        "options": {
+          "returnFirstMatch": false
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        208,
+        0
+      ],
+      "id": "661c3450-7fa9-47db-92f9-0f6ba5d40485",
+      "name": "Read Website Chat Log",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "CaoKD3EXIAUsqClz",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Summarise the Website Chat Log for Echo / the BFC Team.\nconst rows = $input.all().map(i => i.json);\nconst norm = s => String(s || '').toLowerCase().trim();\n\nconst focus = norm($('When Executed by Another Workflow').first().json.focus) || 'all';\n\nconst isLead    = r => norm(r['Bot Status']) === 'trial_requested' || norm(r['Is Lead']) === 'yes';\nconst isIssue   = r => norm(r['Bot Status']) === 'issue_detected';\nconst isUnknown = r => norm(r['Bot Status']) === 'unknown_question';\nconst isOpen    = r => !['done', 'closed', 'resolved'].includes(norm(r['Status']));\n\nconst mapRow = r => ({\n  date: r['Date / Time'] || '',\n  conversation_id: r['Conversation ID'] || '',\n  name: r['Visitor Name'] || '',\n  email: r['Email'] || '',\n  phone: r['Phone'] || '',\n  topic: r['Enquiry Topic'] || '',\n  summary: r['Enquiry Summary'] || '',\n  is_lead: r['Is Lead'] || '',\n  urgency: r['Urgency'] || '',\n  next_action: r['Recommended Next Action'] || '',\n  bot_status: r['Bot Status'] || '',\n  status: r['Status'] || '',\n  page_url: r['Page URL'] || ''\n});\n\nconst leads   = rows.filter(isLead);\nconst issues  = rows.filter(isIssue);\nconst unknown = rows.filter(isUnknown);\nconst open    = rows.filter(isOpen);\nconst recent  = rows.slice(-15).reverse();\n\nconst out = {\n  success: true,\n  message: 'Website chat log review completed.',\n  focus,\n  total_chats_logged: rows.length,\n  lead_count: leads.length,\n  issue_count: issues.length,\n  unknown_question_count: unknown.length,\n  open_items_count: open.length\n};\n\nif (focus === 'leads')               out.leads = leads.map(mapRow);\nelse if (focus === 'issues')         out.issues = issues.map(mapRow);\nelse if (focus === 'unknown_questions') out.unknown_questions = unknown.map(r => ({ question: r['Enquiry Summary'] || r['Enquiry Topic'] || '', date: r['Date / Time'] || '' }));\nelse {\n  out.leads = leads.map(mapRow);\n  out.issues = issues.map(mapRow);\n  out.unknown_questions = unknown.map(r => ({ question: r['Enquiry Summary'] || r['Enquiry Topic'] || '', date: r['Date / Time'] || '' }));\n  out.recent = recent.map(mapRow);\n}\n\nreturn [{ json: out }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "3d7dbd45-bbae-4ca0-8b56-67b74215a3fa",
+      "name": "Return Chat Review"
+    }
+  ],
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "focus": "all",
+          "request": "Give me a review of recent website chats — leads, issues, and unanswered questions."
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Read Website Chat Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Website Chat Log": {
+      "main": [
+        [
+          {
+            "node": "Return Chat Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "f0084868-a90b-4f78-9de4-3d327de5dead",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "id": "0c9eef398e394f92",
+  "tags": [
+    {
+      "name": "BFC Helpers"
+    }
+  ]
+}
