@@ -1,0 +1,320 @@
+{
+  "name": "BFC Website Chat Logger",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bfc-website-chat-log",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "94bfea04-8a79-4b6b-91de-5adb42042e7c",
+      "name": "Website Chat Webhook",
+      "webhookId": "21b912b3-9b0f-42aa-b860-addd852c55ba"
+    },
+    {
+      "parameters": {
+        "jsCode": "// BFC Website Chat Logger — normalise incoming chat details\n// Accepts a POST from any third-party chat widget. Fields are read flexibly\n// so the workflow works whatever the widget happens to call them.\n\nconst inc = ($json.body && typeof $json.body === 'object') ? $json.body : $json;\n\nfunction pick(...keys) {\n  for (const k of keys) {\n    const v = inc[k];\n    if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim();\n  }\n  return '';\n}\n\n// Build a transcript string if one wasn't supplied directly\nlet transcript = pick('transcript', 'conversation', 'history', 'chat');\nif (!transcript && Array.isArray(inc.messages)) {\n  transcript = inc.messages\n    .map(m => `${m.role || m.sender || m.from || ''}: ${m.text || m.message || m.content || ''}`.trim())\n    .join('\\n');\n}\n\nlet name  = pick('name', 'visitor_name', 'full_name', 'contact_name');\nlet email = pick('email', 'visitor_email', 'contact_email');\nlet phone = pick('phone', 'visitor_phone', 'contact_phone', 'mobile');\n\n// Fallback: scrape contact details out of the raw payload / transcript\nconst blob = [transcript, JSON.stringify(inc)].join(' ');\nif (!email) { const m = blob.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}/); if (m) email = m[0]; }\nif (!phone) { const m = blob.match(/(\\+?\\d[\\d ()\\-]{7,}\\d)/); if (m) phone = m[0].trim(); }\n\nconst topic   = pick('topic', 'enquiry_topic', 'intent', 'subject', 'category');\nconst summary = pick('summary', 'enquiry_summary', 'message', 'question', 'last_message') || transcript.slice(0, 800);\n\nlet isLead = pick('is_lead', 'lead');\nif (!isLead) isLead = (email || phone) ? 'Yes' : 'No';\n\nconst urgency    = pick('urgency', 'priority') || 'Normal';\nconst nextAction = pick('recommended_next_action', 'next_action', 'action')\n                   || ((email || phone) ? 'Follow up with visitor' : 'Review chat — no contact details captured');\n\nreturn [{\n  json: {\n    conversation_id: pick('conversation_id', 'session_id', 'chat_id', 'id'),\n    visitor_name: name,\n    email,\n    phone,\n    enquiry_topic: topic,\n    enquiry_summary: summary,\n    is_lead: isLead,\n    urgency,\n    recommended_next_action: nextAction,\n    page_url: pick('page_url', 'url', 'page', 'source_url'),\n    chatbot_source: pick('chatbot', 'source', 'widget', 'bot_name') || 'Website Chatbot',\n    status: 'New'\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "id": "a4584c8a-99fe-43db-b57b-a14da809b396",
+      "name": "Extract Chat Details"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1QZeQ_g1SroWTN8qRE9O-lPz_0VFAB4i9KmCpE5KqX4M",
+          "mode": "list",
+          "cachedResultName": "BFC Echo Tracker",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1QZeQ_g1SroWTN8qRE9O-lPz_0VFAB4i9KmCpE5KqX4M/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Website Chat Log",
+          "mode": "list",
+          "cachedResultName": "Website Chat Log"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date / Time": "={{ $now }}",
+            "Conversation ID": "={{ $json.conversation_id }}",
+            "Visitor Name": "={{ $json.visitor_name }}",
+            "Email": "={{ $json.email }}",
+            "Phone": "={{ $json.phone }}",
+            "Enquiry Topic": "={{ $json.enquiry_topic }}",
+            "Enquiry Summary": "={{ $json.enquiry_summary }}",
+            "Is Lead": "={{ $json.is_lead }}",
+            "Urgency": "={{ $json.urgency }}",
+            "Recommended Next Action": "={{ $json.recommended_next_action }}",
+            "Page URL": "={{ $json.page_url }}",
+            "Chatbot / Source": "={{ $json.chatbot_source }}",
+            "Status": "={{ $json.status || \"New\" }}",
+            "Logged By": "Website Chat Logger"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Date / Time",
+              "displayName": "Date / Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Conversation ID",
+              "displayName": "Conversation ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Visitor Name",
+              "displayName": "Visitor Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Enquiry Topic",
+              "displayName": "Enquiry Topic",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Enquiry Summary",
+              "displayName": "Enquiry Summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Is Lead",
+              "displayName": "Is Lead",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Urgency",
+              "displayName": "Urgency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Recommended Next Action",
+              "displayName": "Recommended Next Action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Page URL",
+              "displayName": "Page URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Chatbot / Source",
+              "displayName": "Chatbot / Source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Logged By",
+              "displayName": "Logged By",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        440,
+        0
+      ],
+      "id": "c95e69f5-0e42-47a4-8619-d8b8d9f03261",
+      "name": "Append chat to sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "CaoKD3EXIAUsqClz",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message: \"Chat logged.\", conversation_id: $json.conversation_id || \"\", is_lead: $json.is_lead || \"\" }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        660,
+        0
+      ],
+      "id": "dd89d8ac-6244-4632-a53b-39e94ef383f3",
+      "name": "Respond Success"
+    }
+  ],
+  "pinData": {
+    "Website Chat Webhook": [
+      {
+        "json": {
+          "headers": {},
+          "params": {},
+          "query": {},
+          "body": {
+            "conversation_id": "web-2026-0001",
+            "name": "Jordan Example",
+            "email": "jordan@example.com",
+            "phone": "0400 000 000",
+            "topic": "Membership enquiry",
+            "messages": [
+              {
+                "role": "visitor",
+                "text": "Hi, how much is a kids muay thai membership?"
+              },
+              {
+                "role": "bot",
+                "text": "Our junior membership starts at $X/week. Can I grab your name and email?"
+              },
+              {
+                "role": "visitor",
+                "text": "Jordan, jordan@example.com, 0400 000 000"
+              }
+            ],
+            "page_url": "https://bendigofightcentre.com/memberships",
+            "chatbot": "Website Chatbot"
+          }
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Website Chat Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Chat Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Chat Details": {
+      "main": [
+        [
+          {
+            "node": "Append chat to sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append chat to sheet": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "21549c5d-abfd-4aae-8a5d-547e89cb128b",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "id": "0bbc7a731ba34a79",
+  "tags": [
+    {
+      "name": "BFC Helpers"
+    }
+  ]
+}
