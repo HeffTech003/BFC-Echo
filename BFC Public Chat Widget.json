@@ -1,0 +1,650 @@
+{
+  "name": "BFC Public Chat Widget",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bfc-public-chat",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "wh01",
+      "name": "Public Chat Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        304
+      ],
+      "webhookId": "1ed4a07e-2509-42f4-90f3-56814031e633"
+    },
+    {
+      "parameters": {
+        "jsCode": "const history = ($input.item.json.body && $input.item.json.body.history) ? $input.item.json.body.history : [];\n\nconst sp = `You are the friendly, knowledgeable chatbot for Bendigo Fight Centre (BFC). Your job is to answer questions about the gym, help visitors understand what we offer, and help them book a free trial. Always be warm, encouraging, and direct.\n\nALWAYS respond in valid JSON with this exact structure:\n{\n  \"message\": \"your reply here\",\n  \"status\": \"in_progress\" | \"trial_requested\" | \"issue_detected\" | \"unknown_question\",\n  \"data\": {}\n}\n\n=== ABOUT BFC ===\nBendigo Fight Centre (BFC) is a mixed martial arts gym located in Bendigo, Victoria, Australia.\n- Established: 2021 (Est. 2021)\n- Years in operation: 5 years\n- Phone: 0408 311 470\n- Office hours: 4:30pm – 7:00pm weekdays\n- We offer Boxing, Muay Thai, Kickboxing, MMA, BJJ (Brazilian Jiu-Jitsu), and more\n\n=== CLUB STATS ===\n- 500+ fights as a club\n- 30+ classes per week\n- 5 years in operation\n- Competed in 5 countries (Scotland, Indonesia/Bali, England, Thailand, and more)\n\n=== ACHIEVEMENTS ===\nBFC fighters and coaches have achieved:\n- Kickboxing Super Welterweight Victorian State Championship Runner Up\n- WBC AABL Australasian Bantamweight Champion\n- Muay Thai State Jr Middleweight Championship Runner Up\n- K-1 Jr Welterweight Victorian State Championship Runner Up\n- Commonwealth Heavyweight Championship Boxing Runner Up\n- WKA International Super Welterweight Championship Boxing Runner Up\n- 2024 VABL Light Heavyweight State Championship\n- 2023 Australian Team for the WKA World Championships\n- WKA MMA Featherweight World Champion\n- 2023 WKA Boxing Heavyweight World Champion\n- 2023 Scotland vs Australia Team — two BFC boxers competing for Commonwealth Titles\n- 2023 Boxing Super Welterweight Victoria Regional Champion\n- 2024 Boxing Super Welterweight Victoria Regional Champion\n- 2023 WKA World Championships — BFC coach served as Australian Head Coach\n- 2024 AABL Nationals — BFC coach served as Victorian State Coach\n- 2024 VABL Heavyweight Champion\n- 2025 VABL Heavyweight Champion\n- 2024 VABL Light Heavyweight Champion\n- 2025 LHW AABL Australian Light Heavyweight Champion\n- 2025 Australian Lightweight Champion\n- 2025 ABC Light Heavyweight Golden Gloves\n\n=== FREE TRIAL ===\n- 2 FREE trial sessions — any class or discipline they choose\n- No restrictions on which classes they try\n- Just wear comfortable clothing — no special gear needed\n- Community gear is available to borrow\n- Book via the widget (preferred) or just walk in\n- No joining fee after the trial — just sign up and that's it\n\n=== MEMBERSHIP OPTIONS ===\nAdult:\n- Weekly: $44.99/week (6-month lock-in)\n- Monthly: $229.99/month (no lock-in, cancel anytime)\nYouth:\n- Weekly: $39.99/week\n- Monthly: $199.99/month\nAdditional info:\n- Ezidebit processing fee applies (third-party payment processor)\n- Missed payment fee applies (Ezidebit, not BFC)\n- No other hidden costs\n\n=== CASUAL / DROP-IN ===\n- $25 per class, pay on the day\n- No sign-up or membership required\n- Great for people with other commitments\n\n=== CLASSES & TIMETABLE ===\n- 30+ classes per week\n- Disciplines: Boxing, Muay Thai, Kickboxing, MMA, BJJ\n- For timetable details, direct visitors to the website or call 0408 311 470\n\n=== AGE GROUPS ===\n- 4–6 years old: Junior program\n- 6–17 years old: Youth program\n- 18+: Adult program\n- Advanced youth athletes may join adult classes at the coach's discretion\n\n=== WHAT TO BRING ===\nNothing — just comfortable clothing. We have community gear to borrow (gloves, pads, etc.).\n\n=== COACHES ===\n- Lucas — Head Coach\n- Dariean — MMA / Muay Thai\n- Martin — Boxing\n- Kaleb — MMA / Kickboxing\n- Matt — MMA\n- Hamish — Boxing Trainer\n- Gary — Boxing\n- Marcos — BJJ\n- Robbie — BJJ\n\n=== BOOKING A FREE TRIAL ===\nWhen a visitor wants to book a free trial, ask for:\n1. Their full name\n2. Their email address\n3. Optionally: which class/discipline they're interested in\n\nOnce you have name + email, respond with status \"trial_requested\" and include their details in the data field like this:\n{\n  \"message\": \"...\",\n  \"status\": \"trial_requested\",\n  \"data\": {\n    \"name\": \"...\",\n    \"email\": \"...\",\n    \"classInterest\": \"...\",\n    \"enquiry_topic\": \"Free Trial Booking\",\n    \"enquiry_summary\": \"Visitor booked a free trial via the chat widget.\"\n  }\n}\n\n=== ISSUE DETECTION ===\nMonitor the conversation for emotional signals or feedback that reveals a gap or problem with the gym. This includes:\n- Angry, frustrated, upset, or disappointed visitors\n- Complaints about coaches, classes, facilities, pricing, or scheduling\n- Visitors who had a bad experience or are considering leaving\n- Gaps in what BFC offers that visitors wish existed (e.g. \"do you have X class?\")\n\nIf you detect any of these, respond empathetically and helpfully — AND respond with status \"issue_detected\":\n{\n  \"message\": \"...\",\n  \"status\": \"issue_detected\",\n  \"data\": {\n    \"issue_type\": \"complaint | gap | negative_sentiment | other\",\n    \"emotion_detected\": \"angry | sad | frustrated | disappointed | other\",\n    \"summary\": \"Brief summary of the issue or gap\",\n    \"visitor_name\": \"if known\",\n    \"email\": \"if known\",\n    \"phone\": \"if known\",\n    \"full_transcript_summary\": \"Detailed summary of what the visitor said\",\n    \"recommended_action\": \"What BFC should do about this\"\n  }\n}\n\n=== UNKNOWN QUESTIONS ===\nIf a visitor asks something you don't have information about — and it is NOT covered anywhere in this prompt — respond politely, direct them to call 0408 311 470 or visit during office hours (4:30pm–7pm weekdays), AND use status \"unknown_question\".\n\nThis includes questions about: specific class times, parking, locker rooms, shower facilities, contract details not listed, coach personal details, gym founding stories, events, competitions, merchandise, or anything else not in this prompt.\n{\n  \"message\": \"I don't have that info handy — your best bet is to call us on 0408 311 470 or pop in between 4:30pm–7pm on weekdays and the team can help you out!\",\n  \"status\": \"unknown_question\",\n  \"data\": {\n    \"question\": \"The exact question the visitor asked that you couldn't answer\"\n  }\n}\n\n=== GUIDELINES ===\n- Be warm, friendly, and encouraging — like a real person at the front desk\n- Keep responses concise — don't write essays\n- If someone asks about pricing, always mention the free trial first\n- IMPORTANT: Only ever set status to \"trial_requested\" ONCE per conversation. If the conversation history already shows the visitor provided their name and email, do NOT set trial_requested again — just answer their question normally with status \"in_progress\"\n- Do not make up or guess any information — including dates, history, founding stories, or facts not listed above. If it's not in this prompt, use status \"unknown_question\"\n- BFC was established in 2021 and has been operating for 5 years — you CAN answer questions about how long the gym has been open\n- Always respond in valid JSON — never plain text\n\n=== CRITICAL JSON FORMAT ===\nYour ENTIRE response must be valid JSON. Never add text outside the JSON object.\nFor normal conversation: { \"message\": \"...\", \"status\": \"in_progress\", \"data\": {} }\nFor trial booking (ONCE only): { \"message\": \"...\", \"status\": \"trial_requested\", \"data\": { \"name\": \"...\", \"email\": \"...\", \"classInterest\": \"...\" } }\nFor issue/complaint: { \"message\": \"...\", \"status\": \"issue_detected\", \"data\": { \"issue_type\": \"...\", \"emotion_detected\": \"...\", \"summary\": \"...\" } }\nFor unknown questions: { \"message\": \"...\", \"status\": \"unknown_question\", \"data\": { \"question\": \"...\" } }\n`;\n\nreturn { requestBody: { model: \"gpt-4o\", messages: [{ role: \"system\", content: sp }].concat(history), response_format: { type: \"json_object\" }, temperature: 0.8 } };"
+      },
+      "id": "cd01",
+      "name": "Format Messages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.requestBody }}",
+        "options": {}
+      },
+      "id": "hr01",
+      "name": "OpenAI Chat",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        688,
+        304
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "rROXPicnh1YSebL8",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.item.json;\nconst content = body.choices[0].message.content;\nconst parsed = JSON.parse(content);\nreturn { reply: parsed.message || parsed.reply || \"Sorry, something went wrong. Please try again!\", status: parsed.status || \"in_progress\", data: parsed.data || null };"
+      },
+      "id": "cd02",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        912,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "trial_requested",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if01",
+      "name": "Trial Requested?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Parse AI Response').item.json.data.email }}",
+        "subject": "=Welcome to Bendigo Fight Centre, {{ $('Parse AI Response').item.json.data.firstName }}!",
+        "message": "=<p>Hi {{ $('Parse AI Response').item.json.data.firstName }},</p><p>Thanks for your interest in Bendigo Fight Centre! We're excited to have you come in and try a class.</p><p>One of our coaches will be in touch shortly to get you booked in for your free trial. In the meantime, feel free to check out our timetable at <a href='https://bendigofightcentre.com/timetable/'>bendigofightcentre.com/timetable</a> to see what classes interest you.</p><p>If you have any questions before then, don't hesitate to reach out:<br>📞 0408 311 470<br>✉️ info@bendigofightcentre.com<br>📍 26 Allingham St, Golden Square VIC 3555 (drop in 4:30pm–7pm weekdays)</p><p>See you on the mats!</p><p><strong>The BFC Team</strong><br>Bendigo Fight Centre</p>",
+        "options": {}
+      },
+      "id": "gm01",
+      "name": "Email Prospect",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        160
+      ],
+      "webhookId": "e7b6ad18-87ed-40bb-b079-c155711bb589",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "ZBvUaNvcXX3r547g",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "bendigofightcentre@gmail.com",
+        "subject": "=🥊 New Trial Lead — {{ $('Parse AI Response').item.json.data.firstName }} {{ $('Parse AI Response').item.json.data.lastName }}",
+        "message": "=<h2>New Trial Lead from Website Chat</h2><p><b>Name:</b> {{ $('Parse AI Response').item.json.data.firstName }} {{ $('Parse AI Response').item.json.data.lastName }}<br><b>Email:</b> {{ $('Parse AI Response').item.json.data.email }}<br><b>Source:</b> BFC Website Chat Widget</p><p>They have been sent a welcome email. Follow up to book them in for their free trial.</p>",
+        "options": {}
+      },
+      "id": "gm02",
+      "name": "Notify Kaleb Trial Lead",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        160
+      ],
+      "webhookId": "9220826f-334c-4ad1-a456-a1de9556acac",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "ZBvUaNvcXX3r547g",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ JSON.stringify({ reply: $('Parse AI Response').item.json.reply, status: 'trial_requested' }) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "id": "rw01",
+      "name": "Respond Trial",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1792,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ JSON.stringify({ reply: $('Parse AI Response').item.json.reply, status: $('Parse AI Response').item.json.status }) }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              }
+            ]
+          }
+        }
+      },
+      "id": "rw02",
+      "name": "Respond Chat",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1344,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "issue-check",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "issue_detected",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if02",
+      "name": "Issue Detected?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1312,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n-production-eaabe.up.railway.app/webhook/bfc-website-chat-log",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  conversation_id: 'web-issue-' + Date.now(),\n  status: $json.status,\n  data: {\n    sentiment: ($json.data && $json.data.sentiment) ? $json.data.sentiment : 'unknown',\n    issue_type: ($json.data && $json.data.issue_type) ? $json.data.issue_type : 'other',\n    issue_summary: ($json.data && $json.data.issue_summary) ? $json.data.issue_summary : '',\n    conversation_summary: ($json.data && $json.data.conversation_summary) ? $json.data.conversation_summary : ''\n  },\n  history: $('Public Chat Webhook').item.json.body.history || [],\n  page_url: 'https://bendigofightcentre.com',\n  chatbot: 'BFC Website Chatbot'\n}) }}",
+        "options": {}
+      },
+      "id": "hr02",
+      "name": "Log Issue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1504,
+        352
+      ]
+    },
+    {
+      "id": "build-trial-log",
+      "name": "Build Trial Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        100
+      ],
+      "parameters": {
+        "jsCode": "const body = $('Public Chat Webhook').item.json.body || {};\nconst parsed = $('Parse AI Response').item.json || {};\nconst data = parsed.data || {};\nconst history = body.history || [];\nconst transcript = history.map(m => (m.role||m.sender||'') + ': ' + (m.content||m.text||'')).join('\\n');\nreturn [{ json: {\n  conversation_id: body.session_id || body.conversation_id || '',\n  status: 'trial_requested',\n  name: data.name || '',\n  email: data.email || '',\n  phone: data.phone || '',\n  enquiry_topic: data.classInterest || 'Free Trial Booking',\n  enquiry_summary: data.enquiry_summary || 'Visitor booked a free trial via the chat widget.',\n  transcript: transcript,\n  page_url: body.page_url || body.url || '',\n  chatbot: 'BFC Website Chatbot',\n  is_lead: 'Yes',\n  urgency: 'Normal'\n} }];"
+      }
+    },
+    {
+      "id": "log-trial-01",
+      "name": "Log Trial",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1800,
+        100
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n-production-eaabe.up.railway.app/webhook/bfc-website-chat-log",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "keypairs",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "conversation_id",
+              "value": "={{ $json.conversation_id || $json.data?.conversation_id || $json.session_id || \"\" }}"
+            },
+            {
+              "name": "status",
+              "value": "={{ $json.status }}"
+            },
+            {
+              "name": "name",
+              "value": "={{ $json.data?.name || $json.name || \"\" }}"
+            },
+            {
+              "name": "email",
+              "value": "={{ $json.data?.email || $json.email || \"\" }}"
+            },
+            {
+              "name": "phone",
+              "value": "={{ $json.data?.phone || $json.phone || \"\" }}"
+            },
+            {
+              "name": "enquiry_topic",
+              "value": "={{ $json.data?.enquiry_topic || $json.data?.classInterest || $json.data?.issue_type || $json.data?.question || \"\" }}"
+            },
+            {
+              "name": "enquiry_summary",
+              "value": "={{ $json.data?.enquiry_summary || $json.data?.summary || $json.data?.full_transcript_summary || $json.data?.question || $json.message || \"\" }}"
+            },
+            {
+              "name": "transcript",
+              "value": "={{ $json.transcript || \"\" }}"
+            },
+            {
+              "name": "page_url",
+              "value": "={{ $json.page_url || \"\" }}"
+            },
+            {
+              "name": "chatbot",
+              "value": "BFC Website Chatbot"
+            },
+            {
+              "name": "is_lead",
+              "value": "={{ ($json.data?.email || $json.data?.name) ? \"Yes\" : \"No\" }}"
+            },
+            {
+              "name": "urgency",
+              "value": "={{ $json.status === \"issue_detected\" ? \"High\" : \"Normal\" }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "if-unknown-01",
+      "name": "Unknown Question?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        380
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "unknown_question",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "build-unknown-log",
+      "name": "Build Unknown Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const body = $('Public Chat Webhook').item.json.body || {};\nconst parsed = $input.item.json || {};\nconst data = parsed.data || {};\nconst history = body.history || [];\nconst transcript = history.map(m => (m.role||m.sender||'') + ': ' + (m.content||m.text||'')).join('\\n');\nreturn [{ json: {\n  conversation_id: body.session_id || body.conversation_id || '',\n  status: 'unknown_question',\n  name: '',\n  email: '',\n  phone: '',\n  enquiry_topic: 'Unknown Question',\n  enquiry_summary: data.question || parsed.message || '',\n  transcript: transcript,\n  page_url: body.page_url || body.url || '',\n  chatbot: 'BFC Website Chatbot',\n  is_lead: 'No',\n  urgency: 'Normal'\n} }];"
+      }
+    },
+    {
+      "id": "log-unknown-01",
+      "name": "Log Unknown Question",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1500,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://n8n-production-eaabe.up.railway.app/webhook/bfc-website-chat-log",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "keypairs",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "conversation_id",
+              "value": "={{ $json.conversation_id || $json.data?.conversation_id || $json.session_id || \"\" }}"
+            },
+            {
+              "name": "status",
+              "value": "={{ $json.status }}"
+            },
+            {
+              "name": "name",
+              "value": "={{ $json.data?.name || $json.name || \"\" }}"
+            },
+            {
+              "name": "email",
+              "value": "={{ $json.data?.email || $json.email || \"\" }}"
+            },
+            {
+              "name": "phone",
+              "value": "={{ $json.data?.phone || $json.phone || \"\" }}"
+            },
+            {
+              "name": "enquiry_topic",
+              "value": "={{ $json.data?.enquiry_topic || $json.data?.classInterest || $json.data?.issue_type || $json.data?.question || \"\" }}"
+            },
+            {
+              "name": "enquiry_summary",
+              "value": "={{ $json.data?.enquiry_summary || $json.data?.summary || $json.data?.full_transcript_summary || $json.data?.question || $json.message || \"\" }}"
+            },
+            {
+              "name": "transcript",
+              "value": "={{ $json.transcript || \"\" }}"
+            },
+            {
+              "name": "page_url",
+              "value": "={{ $json.page_url || \"\" }}"
+            },
+            {
+              "name": "chatbot",
+              "value": "BFC Website Chatbot"
+            },
+            {
+              "name": "is_lead",
+              "value": "={{ ($json.data?.email || $json.data?.name) ? \"Yes\" : \"No\" }}"
+            },
+            {
+              "name": "urgency",
+              "value": "={{ $json.status === \"issue_detected\" ? \"High\" : \"Normal\" }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Public Chat Webhook": {
+      "main": [
+        [
+          {
+            "node": "Format Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Messages": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Response": {
+      "main": [
+        [
+          {
+            "node": "Trial Requested?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trial Requested?": {
+      "main": [
+        [
+          {
+            "node": "Email Prospect",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Issue Detected?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Prospect": {
+      "main": [
+        [
+          {
+            "node": "Notify Kaleb Trial Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Kaleb Trial Lead": {
+      "main": [
+        [
+          {
+            "node": "Build Trial Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Issue Detected?": {
+      "main": [
+        [
+          {
+            "node": "Log Issue",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Unknown Question?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Issue": {
+      "main": [
+        [
+          {
+            "node": "Respond Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Trial Payload": {
+      "main": [
+        [
+          {
+            "node": "Log Trial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Trial": {
+      "main": [
+        [
+          {
+            "node": "Respond Trial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unknown Question?": {
+      "main": [
+        [
+          {
+            "node": "Build Unknown Payload",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Unknown Payload": {
+      "main": [
+        [
+          {
+            "node": "Log Unknown Question",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Unknown Question": {
+      "main": [
+        [
+          {
+            "node": "Respond Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "name": "BFC Helpers"
+    }
+  ]
+}
