@@ -10,28 +10,28 @@
           "allowedOrigins": "*"
         }
       },
+      "id": "fc80700b-71d3-4f55-aa29-807a97f8af37",
+      "name": "Website Chat Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
         0,
         0
       ],
-      "id": "680ea74f-5f12-4a67-8b5f-4838fa6c0431",
-      "name": "BFC Chat Log Webhook",
-      "webhookId": "a31313bb-19fe-4c0a-91fa-cd36fa266a3f"
+      "webhookId": "410e9b17-8d87-47c7-9952-bd00696a0f5b"
     },
     {
       "parameters": {
-        "jsCode": "// BFC Website Chat Logger — normalise incoming chat details\n// Receives POSTs from the BFC Public Chat Widget workflow for three AI statuses:\n//   trial_requested | issue_detected | unknown_question\n// Payload (built by the widget workflow's \"Build * Payload\" nodes), flexible field names:\n//   { conversation_id|session_id, status, data:{firstName,lastName,email}, history:[{role,content}], page_url, urgency, ... }\n\nconst inc = ($json.body && typeof $json.body === 'object') ? $json.body : $json;\nconst data = (inc.data && typeof inc.data === 'object') ? inc.data : {};\n\nfunction pick(...keys) {\n  for (const k of keys) {\n    const v = inc[k];\n    if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim();\n  }\n  return '';\n}\n\n// Build a transcript from history[] (or messages[])\nlet transcript = pick('transcript', 'conversation', 'chat');\nconst hist = inc.history || inc.messages;\nif (!transcript && Array.isArray(hist)) {\n  transcript = hist\n    .map(m => `${m.role || m.sender || m.from || ''}: ${m.content || m.text || m.message || ''}`.trim())\n    .join('\\n');\n}\n\nconst status    = pick('status'); // trial_requested | issue_detected | unknown_question | in_progress\nconst isTrial   = status === 'trial_requested';\nconst isIssue   = status === 'issue_detected';\nconst isUnknown = status === 'unknown_question';\n\n// Contact details — prefer the structured data{} the AI returns\nlet name = pick('name', 'visitor_name', 'full_name', 'contact_name');\nif (!name) {\n  const fn = (data.firstName || '').trim();\n  const ln = (data.lastName || '').trim();\n  name = [fn, ln].filter(Boolean).join(' ');\n}\nlet email = pick('email', 'visitor_email', 'contact_email') || (data.email || '').trim();\nlet phone = pick('phone', 'visitor_phone', 'contact_phone', 'mobile') || (data.phone || '').trim();\n\n// Fallback: scrape contact details out of the transcript / raw payload\nconst blob = [transcript, JSON.stringify(inc)].join(' ');\nif (!email) { const m = blob.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}/); if (m) email = m[0]; }\nif (!phone) { const m = blob.match(/(\\+?\\d[\\d ()\\-]{7,}\\d)/); if (m) phone = m[0].trim(); }\n\nconst topic = pick('topic', 'enquiry_topic', 'intent', 'subject', 'category')\n  || (isTrial ? 'Free trial request'\n     : isIssue ? 'Issue / complaint'\n     : isUnknown ? 'Unanswered question'\n     : '');\n\nconst summary = pick('summary', 'enquiry_summary', 'message', 'question', 'last_message')\n  || transcript.slice(0, 800);\n\nlet isLead = pick('is_lead', 'lead');\nif (!isLead) isLead = (isTrial || email || phone) ? 'Yes' : 'No';\n\nconst urgency = pick('urgency', 'priority')\n  || ((isTrial || isIssue) ? 'High' : 'Normal');\n\nconst nextAction = pick('recommended_next_action', 'next_action', 'action')\n  || (isTrial ? 'Contact visitor to book / confirm free trial'\n     : isIssue ? 'Review complaint and follow up with visitor'\n     : isUnknown ? 'Add an answer to the bot knowledge / system prompt'\n     : (email || phone) ? 'Follow up with visitor'\n     : 'Review chat — no contact details captured');\n\nreturn [{\n  json: {\n    conversation_id: pick('conversation_id', 'session_id', 'chat_id', 'id'),\n    visitor_name: name,\n    email,\n    phone,\n    enquiry_topic: topic,\n    enquiry_summary: summary,\n    is_lead: isLead,\n    urgency,\n    recommended_next_action: nextAction,\n    page_url: pick('page_url', 'url', 'page', 'source_url'),\n    chatbot_source: pick('chatbot', 'source', 'widget', 'bot_name') || 'BFC Website Chatbot',\n    bot_status: status,\n    status: 'New'\n  }\n}];"
+        "jsCode": "const inc = ($json.body && typeof $json.body === 'object') ? $json.body : $json;\nconst data = (inc.data && typeof inc.data === 'object') ? inc.data : {};\nfunction pick(...keys) {\n  for (const k of keys) { const v = inc[k]; if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim(); }\n  return '';\n}\nlet transcript = pick('transcript', 'conversation', 'chat');\nconst hist = inc.history || inc.messages;\nif (!transcript && Array.isArray(hist)) { transcript = hist.map(m => (m.role||m.sender||'') + ': ' + (m.content||m.text||'')).join('\\n'); }\nconst status = pick('status');\nlet name = pick('name','visitor_name','full_name','contact_name');\nif (!name) { const fn = (data.firstName||'').trim(); const ln = (data.lastName||'').trim(); name = [fn,ln].filter(Boolean).join(' '); }\nconst email = pick('email') || (data.email||'').trim();\nconst phone = pick('phone','mobile','telephone') || (data.phone||data.mobile||'').trim();\nconst topic = pick('enquiry_topic','topic','subject','class_interest') || (data.classInterest||data.topic||'').trim();\nconst summary = pick('enquiry_summary','summary','notes','message') || transcript.slice(0,500);\nconst isLead = pick('is_lead','lead') || (email || phone || name ? 'Yes' : 'No');\nconst urgency = pick('urgency') || 'Normal';\nconst nextAction = pick('recommended_next_action','next_action','action') || (status === 'trial_requested' ? 'Book Trial' : 'Follow Up');\n\nreturn [{ json: {\n  'Date / Time': new Date().toISOString(),\n  'Conversation ID': pick('conversation_id','session_id','chat_id','id'),\n  'Visitor Name': name,\n  'Email': email,\n  'Phone': phone,\n  'Enquiry Topic': topic,\n  'Enquiry Summary': summary,\n  'Is Lead': isLead,\n  'Urgency': urgency,\n  'Recommended Next Action': nextAction,\n  'Page URL': pick('page_url','url','page','source_url'),\n  'Chatbot / Source': pick('chatbot','chatbot_source','source','widget','bot_name') || 'BFC Website Chatbot',\n  'Bot Status': status,\n  'Status': 'New',\n  'Logged By': 'Website Chat Logger'\n} }];"
       },
+      "id": "26e2be49-ce53-477b-9fc4-94aee996022d",
+      "name": "Extract Chat Details",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        220,
+        224,
         0
-      ],
-      "id": "fa038330-3128-4024-8c57-2282c8f97b08",
-      "name": "Extract Chat Details"
+      ]
     },
     {
       "parameters": {
@@ -39,36 +39,16 @@
         "documentId": {
           "__rl": true,
           "value": "1QZeQ_g1SroWTN8qRE9O-lPz_0VFAB4i9KmCpE5KqX4M",
-          "mode": "list",
-          "cachedResultName": "BFC Echo Tracker",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1QZeQ_g1SroWTN8qRE9O-lPz_0VFAB4i9KmCpE5KqX4M/edit?usp=drivesdk"
+          "mode": "id"
         },
         "sheetName": {
           "__rl": true,
           "value": "1686368022",
-          "mode": "id",
-          "cachedResultName": "Website Chat Log",
-          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1QZeQ_g1SroWTN8qRE9O-lPz_0VFAB4i9KmCpE5KqX4M/edit#gid=1686368022"
+          "mode": "id"
         },
         "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "Date / Time": "={{ $now }}",
-            "Conversation ID": "={{ $json.conversation_id }}",
-            "Visitor Name": "={{ $json.visitor_name }}",
-            "Email": "={{ $json.email }}",
-            "Phone": "={{ $json.phone }}",
-            "Enquiry Topic": "={{ $json.enquiry_topic }}",
-            "Enquiry Summary": "={{ $json.enquiry_summary }}",
-            "Is Lead": "={{ $json.is_lead }}",
-            "Urgency": "={{ $json.urgency }}",
-            "Recommended Next Action": "={{ $json.recommended_next_action }}",
-            "Page URL": "={{ $json.page_url }}",
-            "Chatbot / Source": "={{ $json.chatbot_source }}",
-            "Bot Status": "={{ $json.bot_status }}",
-            "Status": "={{ $json.status || \"New\" }}",
-            "Logged By": "Website Chat Logger"
-          },
+          "mappingMode": "autoMapInputData",
+          "value": {},
           "matchingColumns": [],
           "schema": [
             {
@@ -78,7 +58,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true
+              "canBeUsedToMatch": true,
+              "removed": false
             },
             {
               "id": "Conversation ID",
@@ -87,7 +68,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true
+              "canBeUsedToMatch": true,
+              "removed": false
             },
             {
               "id": "Visitor Name",
@@ -96,7 +78,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true
+              "canBeUsedToMatch": true,
+              "removed": false
             },
             {
               "id": "Email",
@@ -105,7 +88,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true
+              "canBeUsedToMatch": true,
+              "removed": false
             },
             {
               "id": "Phone",
@@ -114,7 +98,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true
+              "canBeUsedToMatch": true,
+              "removed": false
             },
             {
               "id": "Enquiry Topic",
@@ -123,7 +108,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true
+              "canBeUsedToMatch": true,
+              "removed": false
             },
             {
               "id": "Enquiry Summary",
@@ -132,7 +118,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true
+              "canBeUsedToMatch": true,
+              "removed": false
             },
             {
               "id": "Is Lead",
@@ -141,7 +128,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true
+              "canBeUsedToMatch": true,
+              "removed": false
             },
             {
               "id": "Urgency",
@@ -150,7 +138,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true
+              "canBeUsedToMatch": true,
+              "removed": false
             },
             {
               "id": "Recommended Next Action",
@@ -159,7 +148,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true
+              "canBeUsedToMatch": true,
+              "removed": false
             },
             {
               "id": "Page URL",
@@ -168,7 +158,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true
+              "canBeUsedToMatch": true,
+              "removed": false
             },
             {
               "id": "Chatbot / Source",
@@ -177,7 +168,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true
+              "canBeUsedToMatch": true,
+              "removed": false
             },
             {
               "id": "Bot Status",
@@ -186,7 +178,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true
+              "canBeUsedToMatch": true,
+              "removed": false
             },
             {
               "id": "Status",
@@ -195,7 +188,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true
+              "canBeUsedToMatch": true,
+              "removed": false
             },
             {
               "id": "Logged By",
@@ -204,7 +198,8 @@
               "defaultMatch": false,
               "display": true,
               "type": "string",
-              "canBeUsedToMatch": true
+              "canBeUsedToMatch": true,
+              "removed": false
             }
           ],
           "attemptToConvertTypes": false,
@@ -212,74 +207,39 @@
         },
         "options": {}
       },
+      "id": "b1f0a39e-af8d-49f5-bc0d-d2492d0ac7e5",
+      "name": "Append chat to sheet",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
       "position": [
-        440,
+        448,
         0
       ],
-      "id": "d2cbd7c1-84bd-4d20-9625-6767e1d66f3d",
-      "name": "Append chat to sheet",
       "credentials": {
         "googleSheetsOAuth2Api": {
-          "id": "CaoKD3EXIAUsqClz",
-          "name": "Google Sheets OAuth2 API"
+          "id": "LVvM4wJtmCnVORgk",
+          "name": "Google Sheets account"
         }
       }
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ success: true, message: \"Chat logged.\", conversation_id: $json.conversation_id || \"\", is_lead: $json.is_lead || \"\" }) }}",
+        "responseBody": "={{ JSON.stringify({ success: true, conversation_id: $json.conversation_id || \"\", is_lead: $json.is_lead || \"\" }) }}",
         "options": {}
       },
+      "id": "5d35ebf7-2146-4662-862a-b3bf7fe773e7",
+      "name": "Respond Success",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        660,
+        672,
         0
-      ],
-      "id": "802583cd-1072-4826-8cd9-75fde77194f4",
-      "name": "Respond Success"
+      ]
     }
   ],
-  "pinData": {
-    "BFC Chat Log Webhook": [
-      {
-        "json": {
-          "headers": {},
-          "params": {},
-          "query": {},
-          "body": {
-            "conversation_id": "web-2026-0001",
-            "status": "trial_requested",
-            "data": {
-              "firstName": "Jordan",
-              "lastName": "Example",
-              "email": "jordan@example.com"
-            },
-            "history": [
-              {
-                "role": "user",
-                "content": "Hi, can I do a free trial for kids muay thai?"
-              },
-              {
-                "role": "assistant",
-                "content": "Absolutely! Can I grab your name and email to book it?"
-              },
-              {
-                "role": "user",
-                "content": "Jordan Example, jordan@example.com"
-              }
-            ],
-            "page_url": "https://bendigofightcentre.com/"
-          }
-        }
-      }
-    ]
-  },
   "connections": {
-    "BFC Chat Log Webhook": {
+    "Website Chat Webhook": {
       "main": [
         [
           {
@@ -313,16 +273,14 @@
       ]
     }
   },
-  "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "binaryMode": "separate"
   },
-  "versionId": "2561ec1e-3ab3-498b-964e-94220e4a2fd6",
+  "pinData": {},
   "meta": {
     "templateCredsSetupCompleted": true
   },
-  "nodeGroups": [],
-  "id": "taoaVYdeSWu2h9rW",
   "tags": [
     {
       "name": "BFC Helpers"
