@@ -1,0 +1,829 @@
+{
+  "name": "BFC Cancellation Intake",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "BFC Membership Cancellation",
+        "formDescription": "Sorry to see you go! Fill this in and the BFC team will confirm your cancellation and any notice period.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Full Name",
+              "fieldType": "text",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Email",
+              "fieldType": "email",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Phone Number",
+              "fieldType": "text",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Membership Type",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Casual"
+                  },
+                  {
+                    "option": "Monthly Direct Debit"
+                  },
+                  {
+                    "option": "3-Month"
+                  },
+                  {
+                    "option": "6-Month"
+                  },
+                  {
+                    "option": "Annual"
+                  },
+                  {
+                    "option": "Youth/Junior"
+                  },
+                  {
+                    "option": "Family"
+                  },
+                  {
+                    "option": "Trial (not yet converted)"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "Reason for Cancellation",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Cost"
+                  },
+                  {
+                    "option": "Moving away"
+                  },
+                  {
+                    "option": "Injury"
+                  },
+                  {
+                    "option": "Work / schedule"
+                  },
+                  {
+                    "option": "Switching gyms"
+                  },
+                  {
+                    "option": "Personal reasons"
+                  },
+                  {
+                    "option": "Other"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "Preferred Last Training Date",
+              "fieldType": "date",
+              "requiredField": false
+            },
+            {
+              "fieldLabel": "Additional Comments",
+              "fieldType": "textarea",
+              "requiredField": false
+            },
+            {
+              "fieldLabel": "Submitted By",
+              "fieldType": "dropdown",
+              "requiredField": true,
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Member (web)"
+                  },
+                  {
+                    "option": "Staff (phone / in person)"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        -200
+      ],
+      "id": "2b520917-3b32-4e4e-850f-756fdb39d3c2",
+      "name": "Cancellation Form",
+      "webhookId": "4f2ea72a-eb94-4058-90ba-03c7e2071bcc"
+    },
+    {
+      "parameters": {
+        "jsCode": "const f = $json;\nconst src = String(f['Submitted By']||'').startsWith('Staff') ? 'Staff / Phone' : 'Web Form';\nreturn [{ json: {\n  source: src,\n  name: f['Full Name'] || '',\n  email: f['Email'] || '',\n  phone: f['Phone Number'] || '',\n  membership_type: f['Membership Type'] || '',\n  reason: f['Reason for Cancellation'] || '',\n  last_training_date: f['Preferred Last Training Date'] || '',\n  comments: f['Additional Comments'] || ''\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        -200
+      ],
+      "id": "b50ce1a8-0687-4bcd-b93d-24a09c21a6fb",
+      "name": "Normalise Form"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bfc-cancellation",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "22112099-38d9-4c13-89ca-97c31029db03",
+      "name": "Cancellation Webhook",
+      "webhookId": "275c2f61-6d5d-43d9-813d-3e09a4ebf54d"
+    },
+    {
+      "parameters": {
+        "jsCode": "const inc = ($json.body && typeof $json.body === 'object') ? $json.body : $json;\nconst comments = [inc.comments || '', inc.transcript ? ('Transcript:\\n' + inc.transcript) : ''].filter(Boolean).join('\\n\\n');\nreturn [{ json: {\n  source: inc.source || 'Chatbot',\n  name: inc.name || '',\n  email: inc.email || '',\n  phone: inc.phone || '',\n  membership_type: inc.membership_type || '',\n  reason: inc.reason || '',\n  last_training_date: inc.last_training_date || '',\n  comments: comments\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ],
+      "id": "52f773bf-897c-46f5-a1b4-bcec2672aaf0",
+      "name": "Normalise Chatbot"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message: \"Cancellation recorded.\" }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        460,
+        0
+      ],
+      "id": "a2760f3d-c720-4d6c-8aff-65f1f89b64da",
+      "name": "Respond Cancellation"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1QZeQ_g1SroWTN8qRE9O-lPz_0VFAB4i9KmCpE5KqX4M",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Cancellations",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date / Time": "={{ $now }}",
+            "Source": "={{ $json.source }}",
+            "Member Name": "={{ $json.name }}",
+            "Email": "={{ $json.email }}",
+            "Phone": "={{ $json.phone }}",
+            "Membership Type": "={{ $json.membership_type }}",
+            "Reason": "={{ $json.reason }}",
+            "Preferred Last Training Date": "={{ $json.last_training_date }}",
+            "Comments / Summary": "={{ $json.comments }}",
+            "Status": "New",
+            "Logged By": "Cancellation Intake"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Date / Time",
+              "displayName": "Date / Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Source",
+              "displayName": "Source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Member Name",
+              "displayName": "Member Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Membership Type",
+              "displayName": "Membership Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Reason",
+              "displayName": "Reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Preferred Last Training Date",
+              "displayName": "Preferred Last Training Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Comments / Summary",
+              "displayName": "Comments / Summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Logged By",
+              "displayName": "Logged By",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        700,
+        -100
+      ],
+      "id": "f1c5eb8d-f126-4dab-8df0-6ffc90f18e9d",
+      "name": "Append Cancellation",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "LVvM4wJtmCnVORgk",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 7,
+              "triggerAtMinute": 5
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ],
+      "id": "e34b01d7-fea2-4cec-83fa-63ff851ac0f4",
+      "name": "Daily 7:05am"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "getAll",
+        "returnAll": false,
+        "limit": 25,
+        "simple": true,
+        "filters": {
+          "q": "-from:me newer_than:14d -label:bfc-memberships-cancellations (cancel OR cancellation OR terminate OR \"end my membership\" OR \"stop membership\" OR leaving OR quit OR discontinue OR \"notice period\")"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        200,
+        300
+      ],
+      "id": "b9753108-016b-47da-a50e-ab096c6117a6",
+      "name": "Search Cancellation Emails",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "ZBvUaNvcXX3r547g",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "get",
+        "messageId": "={{ $json.id }}",
+        "simple": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        400,
+        300
+      ],
+      "id": "d4adb52e-da15-4df2-8a69-da1bb186c0b9",
+      "name": "Read Cancellation Email",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "ZBvUaNvcXX3r547g",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const m = $json;\nconst text = (m.text || m.snippet || '').slice(0, 6000);\nconst system = \"You review an email received by Bendigo Fight Centre and decide whether it is a genuine membership cancellation request. Return JSON only with keys: is_cancellation (true/false), name, email, phone, membership_type (one of: Casual, Monthly Direct Debit, 3-Month, 6-Month, Annual, Youth/Junior, Family, Trial (not yet converted), or empty), reason (one of: cost, moving away, injury, work/schedule, switching gyms, personal reasons, other, or empty), last_training_date, summary, confidence (high|medium|low). Never invent details - leave fields blank if not stated. Marketing emails, member newsletters, and unrelated mail are is_cancellation: false.\";\nconst user = `EMAIL FROM: ${m.from?.text || m.From || ''}\\nSUBJECT: ${m.subject || m.Subject || ''}\\n\\nBODY:\\n${text}`;\nreturn [{ json: {\n  openai_body: JSON.stringify({ model: 'gpt-4o', temperature: 0, response_format: { type: 'json_object' }, messages: [ { role: 'system', content: system }, { role: 'user', content: user } ] }),\n  email_id: m.id,\n  email_from: m.from?.text || m.From || '',\n  email_subject: m.subject || m.Subject || ''\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        300
+      ],
+      "id": "0f74535c-b031-4ddc-99d0-9772920be850",
+      "name": "Build Email Extraction Input"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.openai_body }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        300
+      ],
+      "id": "3d676119-09d5-431e-b0fa-9e876ada2599",
+      "name": "Extract Cancellation (OpenAI)",
+      "credentials": {
+        "openAiApi": {
+          "id": "rROXPicnh1YSebL8",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let p = {};\ntry { p = JSON.parse($json.choices[0].message.content); } catch (e) { p = { is_cancellation: false, confidence: 'low' }; }\nconst ctx = $('Build Email Extraction Input').item.json;\nconst comments = [p.summary || '', `AI confidence: ${p.confidence || 'low'}.`, `Email: https://mail.google.com/mail/u/0/#all/${ctx.email_id}`].filter(Boolean).join(' ');\nreturn [{ json: {\n  is_cancellation: p.is_cancellation === true,\n  source: 'Email',\n  name: p.name || '',\n  email: p.email || ctx.email_from || '',\n  phone: p.phone || '',\n  membership_type: p.membership_type || '',\n  reason: p.reason || '',\n  last_training_date: p.last_training_date || '',\n  comments: comments,\n  email_id: ctx.email_id\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        300
+      ],
+      "id": "e041fe59-feae-48f6-bf21-6adf70c2fc84",
+      "name": "Parse Cancellation Email"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "b5c21b24-3691-4ee1-af2e-8c99ce34898b",
+              "leftValue": "={{ $json.is_cancellation }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        300
+      ],
+      "id": "c1f3f935-6e49-4830-9fab-0f269630f44e",
+      "name": "Is Cancellation?"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1QZeQ_g1SroWTN8qRE9O-lPz_0VFAB4i9KmCpE5KqX4M",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Cancellations",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date / Time": "={{ $now }}",
+            "Source": "={{ $json.source }}",
+            "Member Name": "={{ $json.name }}",
+            "Email": "={{ $json.email }}",
+            "Phone": "={{ $json.phone }}",
+            "Membership Type": "={{ $json.membership_type }}",
+            "Reason": "={{ $json.reason }}",
+            "Preferred Last Training Date": "={{ $json.last_training_date }}",
+            "Comments / Summary": "={{ $json.comments }}",
+            "Status": "New",
+            "Logged By": "Cancellation Intake"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Date / Time",
+              "displayName": "Date / Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Source",
+              "displayName": "Source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Member Name",
+              "displayName": "Member Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Membership Type",
+              "displayName": "Membership Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Reason",
+              "displayName": "Reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Preferred Last Training Date",
+              "displayName": "Preferred Last Training Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Comments / Summary",
+              "displayName": "Comments / Summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Logged By",
+              "displayName": "Logged By",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1400,
+        220
+      ],
+      "id": "c8726136-db06-462d-abb6-159a79ece566",
+      "name": "Append Email Cancellation",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "LVvM4wJtmCnVORgk",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "addLabels",
+        "messageId": "={{ $('Parse Cancellation Email').item.json.email_id }}",
+        "labelIds": []
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1620,
+        300
+      ],
+      "id": "720d4630-9c82-4f64-8488-830f76d50885",
+      "name": "Label: Cancellations",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "ZBvUaNvcXX3r547g",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Cancellation Form": {
+      "main": [
+        [
+          {
+            "node": "Normalise Form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalise Form": {
+      "main": [
+        [
+          {
+            "node": "Append Cancellation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cancellation Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalise Chatbot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalise Chatbot": {
+      "main": [
+        [
+          {
+            "node": "Respond Cancellation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond Cancellation": {
+      "main": [
+        [
+          {
+            "node": "Append Cancellation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily 7:05am": {
+      "main": [
+        [
+          {
+            "node": "Search Cancellation Emails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Cancellation Emails": {
+      "main": [
+        [
+          {
+            "node": "Read Cancellation Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Cancellation Email": {
+      "main": [
+        [
+          {
+            "node": "Build Email Extraction Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Email Extraction Input": {
+      "main": [
+        [
+          {
+            "node": "Extract Cancellation (OpenAI)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Cancellation (OpenAI)": {
+      "main": [
+        [
+          {
+            "node": "Parse Cancellation Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Cancellation Email": {
+      "main": [
+        [
+          {
+            "node": "Is Cancellation?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Cancellation?": {
+      "main": [
+        [
+          {
+            "node": "Append Email Cancellation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Label: Cancellations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Email Cancellation": {
+      "main": [
+        [
+          {
+            "node": "Label: Cancellations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "name": "BFC Helpers"
+    }
+  ]
+}
