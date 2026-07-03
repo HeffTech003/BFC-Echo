@@ -125,3 +125,26 @@ insert into public.form_links (id, token, member_id, form_type, expires_at)
 values
   ('22221111-0000-4000-8000-000000000001', 'demo-form-token-not-for-production', '33333333-3333-4333-8333-333333333333', 'youth_onboarding', now() + interval '14 days')
 on conflict (token) do nothing;
+
+-- ---------------------------------------------------------------------------
+-- Phase 4 seed rows (action requests require a real profile id for
+-- requested_by, so they are created via a DO block using the first profile)
+-- ---------------------------------------------------------------------------
+do $$
+declare
+  v_profile uuid;
+begin
+  select id into v_profile from public.profiles limit 1;
+  if v_profile is null then return; end if;
+
+  insert into public.action_requests
+    (id, action_type, target_system, target_record_id, member_id, summary, payload, reason, risk_level, status, requested_by)
+  values
+    ('12121212-0000-4000-8000-000000000001', 'update_clubworx_contact', 'clubworx', 'cw-1001',
+     '11111111-1111-4111-8111-111111111111', 'Update Alex Demo''s phone number in Clubworx',
+     '{"phone": "0400 999 888"}', 'Member advised new number at front desk', 'standard', 'requested', v_profile),
+    ('12121212-0000-4000-8000-000000000002', 'membership_pause_request', 'clubworx', 'cw-mem-1',
+     '11111111-1111-4111-8111-111111111111', 'Pause Alex Demo''s membership for 4 weeks (injury)',
+     '{"pause_weeks": 4}', 'Ankle injury, physio advised 4 weeks rest', 'high', 'requested', v_profile)
+  on conflict (id) do nothing;
+end $$;

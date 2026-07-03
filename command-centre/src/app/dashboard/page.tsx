@@ -57,6 +57,8 @@ export default async function DashboardPage({
     pendingEmails,
     openCancellations,
     invoicesDue,
+    pendingActions,
+    failedActions,
   ] = await Promise.all([
     supabase
       .from("members")
@@ -112,6 +114,14 @@ export default async function DashboardPage({
       .select("*", { count: "exact", head: true })
       .in("status", ["pending_review", "reviewed"])
       .lte("due_date", isoDaysAgo(-7).slice(0, 10)),
+    supabase
+      .from("action_requests")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "requested"),
+    supabase
+      .from("action_requests")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "failed"),
   ]);
 
   const isFinance = FINANCE_ROLES.includes(profile.role);
@@ -208,6 +218,24 @@ export default async function DashboardPage({
       href: "/tasks",
       hint: "due today or overdue",
     },
+    isFinance
+      ? {
+          label: "Actions awaiting approval",
+          count: pendingActions.count,
+          rag: rag(pendingActions.count, false),
+          href: "/actions-queue",
+          hint: "controlled write actions",
+        }
+      : null,
+    isFinance
+      ? {
+          label: "Failed actions",
+          count: failedActions.count,
+          rag: rag(failedActions.count, true),
+          href: "/actions-queue",
+          hint: "execution errors — retry",
+        }
+      : null,
     isFinance
       ? {
           label: "Sync errors (7d)",

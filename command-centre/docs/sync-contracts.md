@@ -132,6 +132,41 @@ Sheet: `request_type` (`cancellation|pause`), `full_name`, `email`, `phone`,
 `source_record_id` (Gmail message id), `last_synced_at`. Status stays
 `pending_review`.
 
+## Phase 4: executing approved actions (the ONLY write-back path)
+
+One n8n workflow (schedule, every ~5–15 min):
+
+1. **Fetch the queue**:
+   `GET /rest/v1/action_requests?status=eq.approved&applied_at=is.null&order=approved_at.asc`
+2. **For each request**, before executing:
+   `PATCH …?id=eq.{id}` `{ "attempt_count": {n+1}, "last_attempt_at": "{{$now}}" }`
+3. **Execute** per `action_type` against the target system's supported API:
+
+| action_type | Execution |
+|---|---|
+| `update_clubworx_contact` | Clubworx API — update contact fields in `payload` on `target_record_id` |
+| `create_xero_invoice` | Xero API — create draft invoice from `payload` |
+| `create_gmail_draft` | Gmail API — create a **draft** (`payload.to/subject/body`) — never send |
+| `apply_gmail_label` | Gmail API — add `payload.label` to `payload.message_id` |
+| `archive_email` | Gmail API — archive `payload.message_id` (routine mail only; protected categories never reach this queue) |
+| `payment_follow_up_task` | insert into `tasks` |
+| `membership_pause_request` | Clubworx/GoCardless API — submit pause per `payload` |
+| `membership_cancellation_request` | Clubworx/GoCardless API — submit cancellation per `payload` |
+| `refund_request` | GoCardless API — create refund per `payload` |
+| `bulk_reminder_send` | Gmail — send the approved reminder batch in `payload` (only after explicit Owner approval) |
+
+4. **Write back the result** (handoff requirement — every field):
+   - success: `PATCH …` `{ "status": "applied", "applied_at": "{{$now}}", "api_response": {…} }`
+   - failure: `PATCH …` `{ "status": "failed", "error_message": "...", "api_response": {…} }`
+
+   The row already carries requested action, approver, target system and exact
+   record; together with the PATCH this satisfies: requested action ✓ approver ✓
+   target system ✓ exact record ✓ timestamp ✓ API response ✓ success/failure ✓
+   retry state (`attempt_count`, `last_attempt_at`) ✓.
+
+**Never** execute a row whose `status` isn't `approved`. Failed rows are re-queued
+only by a human pressing Retry in the app (`failed → approved`, same frozen payload).
+
 ## Recommended connector order
 
 1. **Clubworx** (daily schedule): members → `member_source_records` + active
