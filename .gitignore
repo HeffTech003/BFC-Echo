@@ -1,0 +1,13 @@
+# Real secrets — never commit
+.env
+.env.local
+.env.*.local
+
+# Node / build artefacts (future Phase 0 app)
+node_modules/
+.next/
+dist/
+
+# OS noise
+.DS_Store
+Thumbs.db
