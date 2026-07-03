@@ -92,6 +92,46 @@ cents — convert GoCardless/Square cents), `currency` (`AUD`), `description`,
 `channel` (`gmail|chatbot`), `direction`, `subject`, `summary`, `occurred_at`,
 `source_system`, `source_record_id`, `raw_data`.
 
+## Phase 2 tables
+
+### email_review_queue — inbox classification suggestions
+
+n8n's inbox scanner classifies mail and inserts one row per message
+(`on_conflict=gmail_message_id`):
+
+| column | value |
+|---|---|
+| gmail_message_id / gmail_thread_id | Gmail ids |
+| from_address, subject, snippet, received_at | message metadata |
+| category | `payments_failed` \| `leads_new` \| `supplier_invoice` \| `cancellation` \| `complaint` \| `legal` \| `safeguarding` \| `routine` \| `other` |
+| protected | **must be `true`** for complaint / legal / safeguarding / cancellation / chargeback / medical — a DB trigger makes archive-approval impossible for these |
+| suggested_label | e.g. `BFC/Payments/Failed`, `BFC/Action-Required` |
+| suggested_action | `label` \| `archive` \| `draft_reply` \| `create_task` \| `none` |
+| ai_summary / ai_draft_reply / confidence | AI output; drafts are DRAFTS — approval never sends |
+
+**Applying decisions** (second n8n workflow, every ~15 min):
+1. `GET /rest/v1/email_review_queue?status=eq.approved&applied_at=is.null`
+2. Apply in Gmail: `label` → add label; `archive` → archive (never possible on
+   protected rows); `draft_reply` → create a Gmail **draft**; `create_task` →
+   insert into `tasks`.
+3. `PATCH …?id=eq.{id}` with `{ "applied_at": "{{$now}}" }` (or `apply_error`).
+
+### cancellation_requests — dual-write from the existing cancellation intake
+
+The live Cancellation Intake workflow adds a POST here alongside the Google
+Sheet: `request_type` (`cancellation|pause`), `full_name`, `email`, `phone`,
+`membership_type`, `reason`, `preferred_last_date`, `comments`,
+`intake_source` (`chatbot|web_form|email|staff_phone`), `source_system:
+'n8n_cancellation_intake'`, `source_record_id` (conversation/form id),
+`last_synced_at`. Status stays `new` — staff work it in the app.
+
+### supplier_invoices — dual-write from the Supplier Invoice Scanner
+
+`supplier`, `amount`, `gst`, `invoice_reference`, `due_date`, `description`,
+`email_link` (Gmail permalink), `source_system: 'gmail_invoice_scanner'`,
+`source_record_id` (Gmail message id), `last_synced_at`. Status stays
+`pending_review`.
+
 ## Recommended connector order
 
 1. **Clubworx** (daily schedule): members → `member_source_records` + active

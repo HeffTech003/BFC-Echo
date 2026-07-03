@@ -19,11 +19,12 @@ integration/action layer.
 |---|---|---|
 | 0 | Scaffold, auth, 6 roles + RLS, audit framework, 13-table data model | ✅ |
 | 1 | Dashboard tiles, member search, canonical profile, match queue, sync status, payments/legacy view | ✅ app side — n8n connectors follow `docs/sync-contracts.md` |
-| 2 | Tasks, leads pipeline, email review | later |
+| 2 | Task queue, leads pipeline, email review + approvals, cancellations, supplier invoices | ✅ app side — n8n feeds per `docs/sync-contracts.md` |
 | 3 | Compliance & safety (policies, medical forms, youth onboarding, incidents) | later |
 | 4 | Controlled write actions (human-approved, via n8n) | last |
 
-Migrations: run `0001_phase0_foundation.sql` then `0002_phase1_reconciliation.sql`.
+Migrations: run `0001_phase0_foundation.sql`, `0002_phase1_reconciliation.sql`,
+`0003_phase2_operations.sql` in order.
 For a demo without live syncs, run `supabase/seed-dev.sql` (dev/staging only).
 
 ## Local setup

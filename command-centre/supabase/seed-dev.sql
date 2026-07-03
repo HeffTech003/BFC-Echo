@@ -63,3 +63,31 @@ on conflict (id) do nothing;
 update public.sync_runs
 set error_message = 'Rate limited by Xero API (429) — retry scheduled'
 where id = 'ffff1111-0000-4000-8000-000000000003';
+
+-- ---------------------------------------------------------------------------
+-- Phase 2 seed rows
+-- ---------------------------------------------------------------------------
+insert into public.email_review_queue
+  (id, gmail_message_id, from_address, subject, snippet, received_at, category, protected, suggested_label, suggested_action, ai_summary, confidence, status)
+values
+  ('99991111-0000-4000-8000-000000000001', 'gm-demo-1', 'billing@supplier.example', 'Invoice INV-2041 due 14 July', 'Please find attached tax invoice...', now() - interval '4 hours', 'supplier_invoice', false, 'BFC/Finance/Supplier-Invoices', 'label', 'Supplier invoice from Example Pty, $412.50 due 14 July.', 'high', 'pending'),
+  ('99991111-0000-4000-8000-000000000002', 'gm-demo-2', 'upset.member@example.com', 'Very disappointed with my last class', 'I want to talk to someone about what happened...', now() - interval '2 hours', 'complaint', true, 'BFC/Action-Required', 'label', 'Member complaint about a class experience. Needs a human reply.', 'high', 'pending'),
+  ('99991111-0000-4000-8000-000000000003', 'gm-demo-3', 'newsletter@vendor.example', 'July gear catalogue', 'Check out our new range...', now() - interval '1 day', 'routine', false, null, 'archive', 'Marketing newsletter, no action needed.', 'medium', 'pending')
+on conflict (gmail_message_id) do nothing;
+
+insert into public.cancellation_requests
+  (id, request_type, full_name, email, membership_type, reason, preferred_last_date, intake_source, status, source_system, source_record_id, last_synced_at)
+values
+  ('88881111-0000-4000-8000-000000000001', 'cancellation', 'Sam Sample', 'sam.sample@example.com', 'Monthly Direct Debit', 'moving away', current_date + 14, 'chatbot', 'new', 'n8n_cancellation_intake', 'conv-demo-1', now()),
+  ('88881111-0000-4000-8000-000000000002', 'pause', 'Alex Demo', 'alex.demo@example.com', 'Adult Weekly', 'injury', current_date + 7, 'staff_phone', 'in_progress', 'n8n_cancellation_intake', 'staff-demo-2', now())
+on conflict (source_system, source_record_id) do nothing;
+
+update public.cancellation_requests set member_id = '22222222-2222-4222-8222-222222222222' where id = '88881111-0000-4000-8000-000000000001';
+update public.cancellation_requests set member_id = '11111111-1111-4111-8111-111111111111' where id = '88881111-0000-4000-8000-000000000002';
+
+insert into public.supplier_invoices
+  (id, supplier, amount, gst, invoice_reference, due_date, description, status, source_system, source_record_id, last_synced_at)
+values
+  ('77771111-0000-4000-8000-000000000001', 'Example Gear Pty Ltd', 412.50, 37.50, 'INV-2041', current_date + 5, 'Gloves and pads restock', 'pending_review', 'gmail_invoice_scanner', 'gm-demo-1', now()),
+  ('77771111-0000-4000-8000-000000000002', 'CleanCo Services', 180.00, 16.36, 'CC-889', current_date - 2, 'Monthly gym cleaning', 'reviewed', 'gmail_invoice_scanner', 'gm-demo-4', now())
+on conflict (source_system, source_record_id) do nothing;
