@@ -50,6 +50,11 @@ const NAV: NavItem[] = [
     roles: ["owner_director", "operations_admin", "finance"],
   },
   {
+    href: "/actions-queue",
+    label: "Actions",
+    roles: ["owner_director", "operations_admin", "finance"],
+  },
+  {
     href: "/compliance",
     label: "Compliance",
     roles: ["owner_director", "operations_admin", "child_safety_lead"],
