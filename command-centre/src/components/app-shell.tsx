@@ -13,6 +13,27 @@ interface NavItem {
 const NAV: NavItem[] = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/members", label: "Members" },
+  { href: "/tasks", label: "Tasks" },
+  {
+    href: "/leads",
+    label: "Leads",
+    roles: ["owner_director", "operations_admin"],
+  },
+  {
+    href: "/email-review",
+    label: "Email Review",
+    roles: ["owner_director", "operations_admin"],
+  },
+  {
+    href: "/cancellations",
+    label: "Cancellations",
+    roles: ["owner_director", "operations_admin", "finance"],
+  },
+  {
+    href: "/invoices",
+    label: "Invoices",
+    roles: ["owner_director", "operations_admin", "finance"],
+  },
   {
     href: "/match-queue",
     label: "Match Queue",
@@ -25,7 +46,7 @@ const NAV: NavItem[] = [
   },
   {
     href: "/sync",
-    label: "Sync Status",
+    label: "Sync",
     roles: ["owner_director", "operations_admin", "finance"],
   },
 ];

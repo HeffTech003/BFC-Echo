@@ -54,6 +54,9 @@ export default async function DashboardPage({
     tasksDue,
     syncErrors,
     openIncidents,
+    pendingEmails,
+    openCancellations,
+    invoicesDue,
   ] = await Promise.all([
     supabase
       .from("members")
@@ -96,6 +99,19 @@ export default async function DashboardPage({
       .from("incident_reports")
       .select("*", { count: "exact", head: true })
       .neq("status", "closed"),
+    supabase
+      .from("email_review_queue")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pending"),
+    supabase
+      .from("cancellation_requests")
+      .select("*", { count: "exact", head: true })
+      .in("status", ["new", "in_progress"]),
+    supabase
+      .from("supplier_invoices")
+      .select("*", { count: "exact", head: true })
+      .in("status", ["pending_review", "reviewed"])
+      .lte("due_date", isoDaysAgo(-7).slice(0, 10)),
   ]);
 
   const isFinance = FINANCE_ROLES.includes(profile.role);
@@ -154,15 +170,42 @@ export default async function DashboardPage({
           label: "Open leads & trials",
           count: newLeads.count,
           rag: "neutral",
-          href: "/members",
-          hint: "pipeline (Phase 2 view)",
+          href: "/leads",
+          hint: "pipeline",
+        }
+      : null,
+    isAdmin
+      ? {
+          label: "Emails awaiting review",
+          count: pendingEmails.count,
+          rag: rag(pendingEmails.count, false),
+          href: "/email-review",
+          hint: "suggested classifications",
+        }
+      : null,
+    isFinance
+      ? {
+          label: "Open cancellations",
+          count: openCancellations.count,
+          rag: rag(openCancellations.count, false),
+          href: "/cancellations",
+          hint: "new + in progress",
+        }
+      : null,
+    isFinance
+      ? {
+          label: "Invoices due (7d)",
+          count: invoicesDue.count,
+          rag: rag(invoicesDue.count, true),
+          href: "/invoices",
+          hint: "unpaid, due within a week",
         }
       : null,
     {
       label: "Tasks due",
       count: tasksDue.count,
       rag: rag(tasksDue.count, false),
-      href: "/dashboard",
+      href: "/tasks",
       hint: "due today or overdue",
     },
     isFinance
