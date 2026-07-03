@@ -49,6 +49,16 @@ const NAV: NavItem[] = [
     label: "Sync",
     roles: ["owner_director", "operations_admin", "finance"],
   },
+  {
+    href: "/compliance",
+    label: "Compliance",
+    roles: ["owner_director", "operations_admin", "child_safety_lead"],
+  },
+  {
+    href: "/audit",
+    label: "Audit",
+    roles: ["owner_director"],
+  },
 ];
 
 export function AppShell({

@@ -91,3 +91,37 @@ values
   ('77771111-0000-4000-8000-000000000001', 'Example Gear Pty Ltd', 412.50, 37.50, 'INV-2041', current_date + 5, 'Gloves and pads restock', 'pending_review', 'gmail_invoice_scanner', 'gm-demo-1', now()),
   ('77771111-0000-4000-8000-000000000002', 'CleanCo Services', 180.00, 16.36, 'CC-889', current_date - 2, 'Monthly gym cleaning', 'reviewed', 'gmail_invoice_scanner', 'gm-demo-4', now())
 on conflict (source_system, source_record_id) do nothing;
+
+-- ---------------------------------------------------------------------------
+-- Phase 3 seed rows
+-- ---------------------------------------------------------------------------
+insert into public.policy_versions (id, policy_name, version, effective_date, review_date, required_audience, is_current)
+values
+  ('66661111-0000-4000-8000-000000000001', 'Child Safety Policy', '1.0', current_date - 100, current_date + 265, array['members','youth_guardians','staff','coaches'], true),
+  ('66661111-0000-4000-8000-000000000002', 'Member Code of Conduct', '1.0', current_date - 100, current_date + 265, array['members'], true),
+  ('66661111-0000-4000-8000-000000000003', 'Member Code of Conduct', '0.9', current_date - 400, current_date - 100, array['members'], false)
+on conflict (policy_name, version) do nothing;
+
+insert into public.policy_acknowledgements (id, policy_version_id, member_id, acknowledged_by_name, guardian_name, signature_method)
+values
+  ('55551111-0000-4000-8000-000000000001', '66661111-0000-4000-8000-000000000002', '11111111-1111-4111-8111-111111111111', 'Alex Demo', null, 'electronic'),
+  ('55551111-0000-4000-8000-000000000002', '66661111-0000-4000-8000-000000000001', '33333333-3333-4333-8333-333333333333', 'Riley Junior', 'Pat Parent', 'electronic')
+on conflict (id) do nothing;
+
+insert into public.medical_forms (id, member_id, form_type, status, data, guardian_consent, privacy_notice_version, submitted_at, expires_at)
+values
+  ('44441111-0000-4000-8000-000000000001', '33333333-3333-4333-8333-333333333333', 'youth_onboarding', 'submitted',
+   '{"medical_conditions":"asthma (has inhaler)","emergency_contact_name":"Pat Parent","emergency_contact_phone":"0400555666","emergency_contact_relationship":"parent"}',
+   true, 'v1', now() - interval '11 months', now() + interval '30 days')
+on conflict (id) do nothing;
+
+insert into public.incident_reports (id, category, severity, status, occurred_at, location, description, immediate_actions, review_date)
+values
+  ('33331111-0000-4000-8000-000000000001', 'injury', 'medium', 'under_review', now() - interval '6 days', 'main mat area',
+   'Member rolled ankle during sparring drills.', 'Ice applied, parent contacted, member sat out remainder of class.', current_date - 1)
+on conflict (id) do nothing;
+
+insert into public.form_links (id, token, member_id, form_type, expires_at)
+values
+  ('22221111-0000-4000-8000-000000000001', 'demo-form-token-not-for-production', '33333333-3333-4333-8333-333333333333', 'youth_onboarding', now() + interval '14 days')
+on conflict (token) do nothing;
