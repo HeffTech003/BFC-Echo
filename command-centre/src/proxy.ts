@@ -34,6 +34,11 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const isAuthRoute = request.nextUrl.pathname.startsWith("/login");
+  // Token-gated public forms (guardian/member medical + onboarding). The
+  // token itself is the credential; the RPCs validate expiry and single use.
+  const isPublicForm = request.nextUrl.pathname.startsWith("/forms/");
+
+  if (isPublicForm) return response;
 
   if (!user && !isAuthRoute) {
     const url = request.nextUrl.clone();
