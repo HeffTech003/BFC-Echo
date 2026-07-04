@@ -19,8 +19,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatDate } from "@/lib/format";
-import { createPolicyVersion, recordAcknowledgement } from "./actions";
+import { formatDate, isoDaysAgo, isoToday } from "@/lib/format";
+import {
+  createPolicyVersion,
+  editPolicyVersion,
+  recordAcknowledgement,
+} from "./actions";
 
 export const metadata = { title: "Policies — BFC Command Centre" };
 
@@ -47,6 +51,8 @@ export default async function PoliciesPage() {
     ackCounts.set(a.policy_version_id, (ackCounts.get(a.policy_version_id) ?? 0) + 1);
   }
   const current = versions.filter((v) => v.is_current);
+  const today = isoToday();
+  const soon = isoDaysAgo(-30);
 
   return (
     <AppShell profile={profile}>
@@ -120,43 +126,122 @@ export default async function PoliciesPage() {
               <TableHead>Audience</TableHead>
               <TableHead>Effective</TableHead>
               <TableHead>Review due</TableHead>
+              <TableHead>Reminder</TableHead>
               <TableHead>Acks</TableHead>
               <TableHead>Status</TableHead>
+              {canManage && <TableHead>Edit</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {versions.map((v) => (
-              <TableRow key={v.id}>
-                <TableCell className="font-medium">
-                  {v.document_url ? (
-                    <a
-                      href={v.document_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-primary underline-offset-4 hover:underline"
-                    >
-                      {v.policy_name}
-                    </a>
-                  ) : (
-                    v.policy_name
+            {versions.map((v) => {
+              const overdue = v.is_current && v.review_date && v.review_date < today;
+              const dueSoon = v.is_current && v.review_date && v.review_date >= today && v.review_date <= soon;
+              return (
+                <TableRow key={v.id}>
+                  <TableCell className="font-medium">
+                    {v.document_url ? (
+                      <a
+                        href={v.document_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-primary underline-offset-4 hover:underline"
+                      >
+                        {v.policy_name}
+                      </a>
+                    ) : (
+                      v.policy_name
+                    )}
+                  </TableCell>
+                  <TableCell>{v.version}</TableCell>
+                  <TableCell className="text-xs">
+                    {(v.required_audience ?? []).join(", ") || "—"}
+                  </TableCell>
+                  <TableCell>{formatDate(v.effective_date)}</TableCell>
+                  <TableCell>{formatDate(v.review_date)}</TableCell>
+                  <TableCell>
+                    {overdue ? (
+                      <Badge variant="destructive">review overdue</Badge>
+                    ) : dueSoon ? (
+                      <Badge variant="warning">review due soon</Badge>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="tabular-nums">{ackCounts.get(v.id) ?? 0}</TableCell>
+                  <TableCell>
+                    {v.is_current ? (
+                      <Badge variant="success">current</Badge>
+                    ) : (
+                      <Badge variant="outline">superseded</Badge>
+                    )}
+                  </TableCell>
+                  {canManage && (
+                    <TableCell>
+                      <details>
+                        <summary className="text-primary cursor-pointer text-xs">edit</summary>
+                        <form
+                          action={editPolicyVersion}
+                          className="mt-2 flex flex-col gap-2 text-xs"
+                        >
+                          <input type="hidden" name="id" value={v.id} />
+                          <input type="hidden" name="policy_name" value={v.policy_name} />
+                          <label>
+                            Effective
+                            <Input
+                              name="effective_date"
+                              type="date"
+                              defaultValue={v.effective_date ?? ""}
+                              className="h-8"
+                            />
+                          </label>
+                          <label>
+                            Review
+                            <Input
+                              name="review_date"
+                              type="date"
+                              defaultValue={v.review_date ?? ""}
+                              className="h-8"
+                            />
+                          </label>
+                          <label>
+                            Document URL
+                            <Input
+                              name="document_url"
+                              type="url"
+                              defaultValue={v.document_url ?? ""}
+                              className="h-8"
+                            />
+                          </label>
+                          <div className="flex flex-wrap gap-2">
+                            {["members", "youth_guardians", "staff", "coaches"].map((a) => (
+                              <label key={a} className="flex items-center gap-1">
+                                <input
+                                  type="checkbox"
+                                  name={`audience_${a}`}
+                                  defaultChecked={(v.required_audience ?? []).includes(a)}
+                                />
+                                {a.replace("_", " ")}
+                              </label>
+                            ))}
+                          </div>
+                          <label className="flex items-center gap-1">
+                            <input
+                              type="checkbox"
+                              name="is_current"
+                              defaultChecked={v.is_current}
+                            />
+                            Current version
+                          </label>
+                          <Button size="sm" variant="outline" type="submit">
+                            Save
+                          </Button>
+                        </form>
+                      </details>
+                    </TableCell>
                   )}
-                </TableCell>
-                <TableCell>{v.version}</TableCell>
-                <TableCell className="text-xs">
-                  {(v.required_audience ?? []).join(", ") || "—"}
-                </TableCell>
-                <TableCell>{formatDate(v.effective_date)}</TableCell>
-                <TableCell>{formatDate(v.review_date)}</TableCell>
-                <TableCell className="tabular-nums">{ackCounts.get(v.id) ?? 0}</TableCell>
-                <TableCell>
-                  {v.is_current ? (
-                    <Badge variant="success">current</Badge>
-                  ) : (
-                    <Badge variant="outline">superseded</Badge>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>

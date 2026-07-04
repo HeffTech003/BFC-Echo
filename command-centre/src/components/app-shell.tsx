@@ -57,7 +57,7 @@ const NAV: NavItem[] = [
   {
     href: "/compliance",
     label: "Compliance",
-    roles: ["owner_director", "operations_admin", "child_safety_lead"],
+    roles: ["owner_director", "operations_admin", "child_safety_lead", "coach"],
   },
   {
     href: "/audit",

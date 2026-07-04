@@ -49,6 +49,45 @@ export async function createPolicyVersion(formData: FormData) {
   revalidatePath("/compliance/policies");
 }
 
+export async function editPolicyVersion(formData: FormData) {
+  const profile = await requireRole(["owner_director", "operations_admin"]);
+  const supabase = await createClient();
+
+  const id = String(formData.get("id"));
+  const policyName = String(formData.get("policy_name") ?? "").trim();
+
+  const audience = ["members", "youth_guardians", "staff", "coaches"].filter(
+    (a) => formData.get(`audience_${a}`) === "on"
+  );
+
+  const makeCurrent = formData.get("is_current") === "on";
+  if (makeCurrent && policyName) {
+    // Retire any other current version of the same policy first.
+    await supabase
+      .from("policy_versions")
+      .update({ is_current: false })
+      .eq("policy_name", policyName)
+      .eq("is_current", true)
+      .neq("id", id);
+  }
+
+  const { error } = await supabase
+    .from("policy_versions")
+    .update({
+      effective_date: String(formData.get("effective_date") ?? "") || null,
+      review_date: String(formData.get("review_date") ?? "") || null,
+      required_audience: audience,
+      document_url: String(formData.get("document_url") ?? "").trim() || null,
+      is_current: makeCurrent,
+    })
+    .eq("id", id);
+
+  if (error) throw new Error(`Edit policy failed: ${error.message}`);
+  await logAudit("policy.edit_version", "policy_versions", id);
+  void profile;
+  revalidatePath("/compliance/policies");
+}
+
 export async function recordAcknowledgement(formData: FormData) {
   await requireRole(["owner_director", "operations_admin", "child_safety_lead"]);
   const supabase = await createClient();

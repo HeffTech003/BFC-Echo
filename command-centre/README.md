@@ -20,12 +20,24 @@ integration/action layer.
 | 0 | Scaffold, auth, 6 roles + RLS, audit framework, 13-table data model | ✅ |
 | 1 | Dashboard tiles, member search, canonical profile, match queue, sync status, payments/legacy view | ✅ app side — n8n connectors follow `docs/sync-contracts.md` |
 | 2 | Task queue, leads pipeline, email review + approvals, cancellations, supplier invoices | ✅ app side — n8n feeds per `docs/sync-contracts.md` |
-| 3 | Compliance & safety: policy library + versioned acknowledgements, secure expiring form links, guardian youth onboarding, restricted incidents, audit viewer | ✅ — ⚠️ legal/privacy review required before collecting real health/child-safety data |
+| 3 | Compliance & safety: policy library (create/edit + acknowledgement matrix), secure expiring form links with explicit consent, guardian youth onboarding, coach medical-note flag, restricted incidents (people/witnesses/evidence/notifications), audit viewer | ✅ — ⚠️ legal/privacy review required before collecting real health/child-safety data (see below) |
 | 4 | Controlled write actions: request → human approval → n8n executes → result recorded. High-risk (cancel/pause/refund/bulk) Owner-only. | ✅ app side — enable the n8n executor only once read-only data is trusted in production |
 
-Migrations: run `0001_phase0_foundation.sql` → `0002_phase1_reconciliation.sql` →
-`0003_phase2_operations.sql` → `0004_phase3_compliance.sql` → `0005_phase4_actions.sql`.
+Migrations: run in order `0001_phase0_foundation.sql` → `0002_phase1_reconciliation.sql`
+→ `0003_phase2_operations.sql` → `0004_phase3_compliance.sql` →
+`0005_phase4_actions.sql` → `0006_phase3_completion.sql`.
 For a demo without live syncs, run `supabase/seed-dev.sql` (dev/staging only).
+
+> ### ⚠️ Before collecting real health or child-safety data (Phase 3)
+> Obtain a **privacy/legal review first**. This platform stores health information,
+> youth records, and safeguarding incidents, which attract specific obligations
+> under the **Australian Privacy Act 1988 (Cth)** (including the Australian Privacy
+> Principles and, for health information, the higher bar for sensitive information)
+> and **Working With Children** requirements for anyone handling youth data. Also:
+> enable **MFA** for all staff accounts in Supabase Auth, keep `medical_forms` and
+> `incident_reports` RLS-locked to Owner/Director + Child Safety Lead (never widen
+> to make a feature work), never send health data by ordinary email (secure form
+> links only), and confirm every medical/incident view is audit-logged.
 
 ## Local setup
 

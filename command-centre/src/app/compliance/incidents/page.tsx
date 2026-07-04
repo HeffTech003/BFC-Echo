@@ -95,9 +95,25 @@ export default async function IncidentsPage() {
               <Label htmlFor="description">What happened</Label>
               <Input id="description" name="description" required />
             </div>
+            <div className="grid gap-2">
+              <Label htmlFor="people_involved">People involved (comma-separated)</Label>
+              <Input id="people_involved" name="people_involved" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="witnesses">Witnesses (comma-separated)</Label>
+              <Input id="witnesses" name="witnesses" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="evidence_refs">Evidence references (comma-separated)</Label>
+              <Input id="evidence_refs" name="evidence_refs" placeholder="file names / Drive links" />
+            </div>
             <div className="grid gap-2 md:col-span-2">
               <Label htmlFor="immediate_actions">Immediate actions taken</Label>
               <Input id="immediate_actions" name="immediate_actions" />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="notifications_made">Notifications made</Label>
+              <Input id="notifications_made" name="notifications_made" placeholder="e.g. parent, DHHS, police" />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="review_date">Review date</Label>
@@ -139,9 +155,29 @@ export default async function IncidentsPage() {
                 </CardHeader>
                 <CardContent className="px-4">
                   <p className="mb-1 text-sm">{i.description}</p>
+                  {(i.people_involved?.length ?? 0) > 0 && (
+                    <p className="text-muted-foreground mb-1 text-xs">
+                      People involved: {(i.people_involved as string[]).join(", ")}
+                    </p>
+                  )}
+                  {(i.witnesses?.length ?? 0) > 0 && (
+                    <p className="text-muted-foreground mb-1 text-xs">
+                      Witnesses: {(i.witnesses as string[]).join(", ")}
+                    </p>
+                  )}
+                  {(i.evidence_refs?.length ?? 0) > 0 && (
+                    <p className="text-muted-foreground mb-1 text-xs">
+                      Evidence: {(i.evidence_refs as string[]).join(", ")}
+                    </p>
+                  )}
                   {i.immediate_actions && (
                     <p className="text-muted-foreground mb-1 text-xs">
                       Immediate: {i.immediate_actions}
+                    </p>
+                  )}
+                  {i.notifications_made && (
+                    <p className="text-muted-foreground mb-1 text-xs">
+                      Notifications: {i.notifications_made}
                     </p>
                   )}
                   {i.follow_up_actions && (
@@ -164,6 +200,11 @@ export default async function IncidentsPage() {
                       name="follow_up_actions"
                       placeholder="follow-up actions"
                       className="h-8 w-44 text-xs"
+                    />
+                    <Input
+                      name="notifications_made"
+                      placeholder="notifications made"
+                      className="h-8 w-40 text-xs"
                     />
                     <Input name="review_date" type="date" className="h-8 w-36 text-xs" />
                     <Input

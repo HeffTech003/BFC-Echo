@@ -28,6 +28,7 @@ export async function submitForm(formData: FormData) {
     p_data: data,
     p_signed_name: String(formData.get("signed_name") ?? "").trim(),
     p_guardian_name: guardianName || null,
+    p_consent: formData.get("consent") === "on",
   });
 
   if (error) redirect(`/forms/${token}?error=${encodeURIComponent(error.message)}`);
