@@ -531,3 +531,11 @@ create policy sync_runs_select_admin on public.sync_runs
 --   update public.profiles set role = 'owner_director', full_name = 'Kaleb Heffernan'
 --   where id = '<auth-user-uuid>';
 -- =============================================================================
+
+-- ---------------------------------------------------------------------------
+-- Grants: allow the authenticated role to operate on all tables.
+-- RLS policies above control which rows each role can actually access.
+-- ---------------------------------------------------------------------------
+grant usage on schema public to authenticated, anon;
+grant select, insert, update, delete on all tables in schema public to authenticated;
+grant usage, select on all sequences in schema public to authenticated;
