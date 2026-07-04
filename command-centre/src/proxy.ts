@@ -46,7 +46,16 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && isAuthRoute) {
+  // Don't bounce an authenticated user off /login when they were sent there
+  // by a deactivated/error case (e.g. a valid session with no profile row).
+  // Otherwise requireProfile()'s redirect to /login?deactivated=1 and this
+  // redirect to /dashboard loop forever.
+  if (
+    user &&
+    isAuthRoute &&
+    !request.nextUrl.searchParams.has("deactivated") &&
+    !request.nextUrl.searchParams.has("error")
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);

@@ -20,7 +20,14 @@ export async function requireProfile(): Promise<Profile> {
     .eq("id", user.id)
     .single();
 
-  if (!profile || !profile.active) redirect("/login?deactivated=1");
+  if (!profile || !profile.active) {
+    // Clear the stale session so the browser stops presenting a cookie for a
+    // user with no usable profile (the proxy guard is the reliable loop-break;
+    // this is best-effort cleanup, since cookie writes during render are
+    // swallowed in Server Components).
+    await supabase.auth.signOut();
+    redirect("/login?deactivated=1");
+  }
 
   return profile as Profile;
 }
