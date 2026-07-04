@@ -12,6 +12,12 @@ export async function createIncident(formData: FormData) {
   const description = String(formData.get("description") ?? "").trim();
   if (!description) return;
 
+  const toList = (field: string) =>
+    String(formData.get(field) ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
   const { data, error } = await supabase
     .from("incident_reports")
     .insert({
@@ -20,7 +26,11 @@ export async function createIncident(formData: FormData) {
       occurred_at: String(formData.get("occurred_at") ?? "") || null,
       location: String(formData.get("location") ?? "").trim() || null,
       description,
+      people_involved: toList("people_involved"),
+      witnesses: toList("witnesses"),
+      evidence_refs: toList("evidence_refs"),
       immediate_actions: String(formData.get("immediate_actions") ?? "").trim() || null,
+      notifications_made: String(formData.get("notifications_made") ?? "").trim() || null,
       review_date: String(formData.get("review_date") ?? "") || null,
       reported_by: profile.id,
       assigned_to: profile.id,
@@ -47,6 +57,8 @@ export async function updateIncident(formData: FormData) {
   const update: Record<string, unknown> = { status };
   const followUp = String(formData.get("follow_up_actions") ?? "").trim();
   if (followUp) update.follow_up_actions = followUp;
+  const notifications = String(formData.get("notifications_made") ?? "").trim();
+  if (notifications) update.notifications_made = notifications;
   const reviewDate = String(formData.get("review_date") ?? "");
   if (reviewDate) update.review_date = reviewDate;
   const outcome = String(formData.get("outcome_notes") ?? "").trim();

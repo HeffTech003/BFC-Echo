@@ -99,7 +99,15 @@ insert into public.policy_versions (id, policy_name, version, effective_date, re
 values
   ('66661111-0000-4000-8000-000000000001', 'Child Safety Policy', '1.0', current_date - 100, current_date + 265, array['members','youth_guardians','staff','coaches'], true),
   ('66661111-0000-4000-8000-000000000002', 'Member Code of Conduct', '1.0', current_date - 100, current_date + 265, array['members'], true),
-  ('66661111-0000-4000-8000-000000000003', 'Member Code of Conduct', '0.9', current_date - 400, current_date - 100, array['members'], false)
+  ('66661111-0000-4000-8000-000000000003', 'Member Code of Conduct', '0.9', current_date - 400, current_date - 100, array['members'], false),
+  -- remaining seeded policies from the Phase 3 spec
+  ('66661111-0000-4000-8000-000000000004', 'Youth Policy', '1.0', current_date - 90, current_date + 275, array['members','youth_guardians'], true),
+  ('66661111-0000-4000-8000-000000000005', 'Photography / Social Media Consent', '1.0', current_date - 90, current_date + 275, array['members','youth_guardians'], true),
+  ('66661111-0000-4000-8000-000000000006', 'Cancellation & Refund Policy', '1.0', current_date - 90, current_date + 275, array['members'], true),
+  ('66661111-0000-4000-8000-000000000007', 'Complaints Policy', '1.0', current_date - 90, current_date + 275, array['members','staff'], true),
+  ('66661111-0000-4000-8000-000000000008', 'Staff Code of Conduct', '1.0', current_date - 90, current_date - 5, array['staff','coaches'], true),
+  ('66661111-0000-4000-8000-000000000009', 'Coach Conduct Policy', '1.0', current_date - 90, current_date + 275, array['coaches'], true),
+  ('66661111-0000-4000-8000-00000000000a', 'Injury & Return-to-Training Guidance', '1.0', current_date - 90, current_date + 275, array['members','coaches'], true)
 on conflict (policy_name, version) do nothing;
 
 insert into public.policy_acknowledgements (id, policy_version_id, member_id, acknowledged_by_name, guardian_name, signature_method)

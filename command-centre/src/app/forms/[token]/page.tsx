@@ -19,6 +19,7 @@ interface LinkInfo {
   member_first_name?: string;
   is_youth?: boolean;
   policies?: { id: string; policy_name: string; version: string }[];
+  privacy_notice?: { version: string; text: string };
 }
 
 export default async function PublicFormPage({
@@ -155,6 +156,24 @@ export default async function PublicFormPage({
                 <Input id="guardian_name" name="guardian_name" required />
               </div>
             )}
+
+            {info.privacy_notice && (
+              <div className="mt-2 rounded-md border p-4 text-xs">
+                <p className="mb-1 font-medium">
+                  Privacy notice (version {info.privacy_notice.version})
+                </p>
+                <p className="text-muted-foreground">{info.privacy_notice.text}</p>
+              </div>
+            )}
+
+            <label className="flex items-start gap-2 text-sm">
+              <input type="checkbox" name="consent" required className="mt-1" />
+              <span>
+                {isYouthFlow
+                  ? "As parent/guardian, I have read the privacy notice and consent to Bendigo Fight Centre collecting and storing this information for my child's safe participation."
+                  : "I have read the privacy notice and consent to Bendigo Fight Centre collecting and storing this information for my safe participation."}
+              </span>
+            </label>
 
             <div className="grid gap-2">
               <Label htmlFor="signed_name">

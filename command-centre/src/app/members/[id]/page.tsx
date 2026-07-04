@@ -107,6 +107,13 @@ export default async function MemberProfilePage({
           <p className="text-muted-foreground text-sm">
             {member.primary_email ?? "no email"} · {member.primary_phone ?? "no phone"}
           </p>
+          {member.has_medical_note && (
+            <p className="mt-2">
+              <Badge variant="warning">
+                Medical note on file — see Child Safety Lead
+              </Badge>
+            </p>
+          )}
         </div>
         <Badge
           variant={
