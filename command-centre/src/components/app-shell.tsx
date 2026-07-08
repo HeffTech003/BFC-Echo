@@ -35,6 +35,11 @@ const NAV: NavItem[] = [
     roles: ["owner_director", "operations_admin", "finance"],
   },
   {
+    href: "/financial",
+    label: "Financial",
+    roles: ["owner_director", "operations_admin", "finance"],
+  },
+  {
     href: "/match-queue",
     label: "Match Queue",
     roles: ["owner_director", "operations_admin"],
