@@ -87,3 +87,43 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ── Mobile responsive additions ─────────────────────────────────────────────── */
+
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 639px) {
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+  .chart-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .profile-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 767px) {
+  nav a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+  tr.cursor-pointer {
+    min-height: 48px;
+  }
+  button, [role="button"] {
+    min-height: 40px;
+  }
+  td .truncate {
+    max-width: 120px;
+  }
+}
