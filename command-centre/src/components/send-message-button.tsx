@@ -51,7 +51,7 @@ export function SendMessageButton({ memberId, toEmail, toPhone, memberName }: Pr
 
     startTransition(async () => {
       const result = await sendMessage({
-        memberId,
+        member_id: memberId,
         to_email:  channels.has("email") ? toEmail : undefined,
         to_phone:  channels.has("sms")   ? toPhone : undefined,
         template,

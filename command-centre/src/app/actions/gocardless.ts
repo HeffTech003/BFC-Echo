@@ -66,10 +66,9 @@ export async function cancelMandate(gcMandateId: string, memberId: string) {
 
     await syncMandateStatus(gcMandateId, "cancelled");
 
-    await logAudit("mandate.cancel", "gocardless_mandates", {
-      gc_mandate_id: gcMandateId,
-      member_id:     memberId,
-      actor:         profile.id,
+    await logAudit("mandate.cancel", "gocardless_mandates", gcMandateId, {
+      member_id: memberId,
+      actor:     profile.id,
     });
 
     revalidatePath(`/members/${memberId}`);
@@ -92,10 +91,9 @@ export async function pauseMandate(gcMandateId: string, memberId: string) {
 
     await syncMandateStatus(gcMandateId, "paused");
 
-    await logAudit("mandate.pause", "gocardless_mandates", {
-      gc_mandate_id: gcMandateId,
-      member_id:     memberId,
-      actor:         profile.id,
+    await logAudit("mandate.pause", "gocardless_mandates", gcMandateId, {
+      member_id: memberId,
+      actor:     profile.id,
     });
 
     revalidatePath(`/members/${memberId}`);
@@ -118,10 +116,9 @@ export async function reinstateMandate(gcMandateId: string, memberId: string) {
 
     await syncMandateStatus(gcMandateId, "active");
 
-    await logAudit("mandate.reinstate", "gocardless_mandates", {
-      gc_mandate_id: gcMandateId,
-      member_id:     memberId,
-      actor:         profile.id,
+    await logAudit("mandate.reinstate", "gocardless_mandates", gcMandateId, {
+      member_id: memberId,
+      actor:     profile.id,
     });
 
     revalidatePath(`/members/${memberId}`);

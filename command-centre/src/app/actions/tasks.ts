@@ -39,8 +39,7 @@ export async function createMemberTask(input: CreateTaskInput) {
     return { success: false, error: error.message };
   }
 
-  await logAudit("tasks.create", "tasks", {
-    task_id:   data?.id,
+  await logAudit("tasks.create", "tasks", data?.id, {
     member_id: input.member_id,
     title:     input.title,
   });

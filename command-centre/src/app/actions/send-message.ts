@@ -35,11 +35,10 @@ export async function sendMessage(payload: MessagePayload) {
       return { success: false, error: `n8n webhook error (${res.status}): ${text}` };
     }
 
-    await logAudit("communications.send", "communications_log", {
-      template:   payload.template,
-      channels:   payload.channels,
-      member_id:  payload.member_id,
-      to_email:   payload.to_email,
+    await logAudit("communications.send", "communications_log", payload.member_id, {
+      template:  payload.template,
+      channels:  payload.channels,
+      to_email:  payload.to_email,
     });
 
     return { success: true };
