@@ -161,18 +161,38 @@ export default async function DashboardPage({
 
   // ── Revenue snapshot (finance roles only) ──────────────────────────────────
   let revenueYtd = 0;
+  let revenueMtd = 0;
   let revenueOutstanding = 0;
   let expensesYtd = 0;
+  let netProfitYtd = 0;
+  let overdueCount = 0;
+  let overdueAmount = 0;
+  let gcCollectionsMtd = 0;
   let xeroReady = false;
 
+  const monthStart = `${today.slice(0, 7)}-01`;
+
   if (isFinance) {
-    const [paidInvoices, outstandingInvoices, paidBills] = await Promise.all([
+    const [
+      paidInvoices,
+      paidInvoicesMtd,
+      outstandingInvoices,
+      overdueInvoices,
+      paidBills,
+      gcPayments,
+    ] = await Promise.all([
       supabase
         .from("xero_invoices")
         .select("total")
         .eq("invoice_type", "ACCREC")
         .eq("status", "PAID")
         .gte("date", fyStart),
+      supabase
+        .from("xero_invoices")
+        .select("total")
+        .eq("invoice_type", "ACCREC")
+        .eq("status", "PAID")
+        .gte("date", monthStart),
       supabase
         .from("xero_invoices")
         .select("amount_due")
@@ -180,21 +200,43 @@ export default async function DashboardPage({
         .eq("status", "AUTHORISED"),
       supabase
         .from("xero_invoices")
+        .select("amount_due")
+        .eq("invoice_type", "ACCREC")
+        .eq("status", "AUTHORISED")
+        .lt("due_date", today),
+      supabase
+        .from("xero_invoices")
         .select("total")
         .eq("invoice_type", "ACCPAY")
         .eq("status", "PAID")
         .gte("date", fyStart),
+      supabase
+        .from("payment_events")
+        .select("amount")
+        .eq("event_type", "payment_paid")
+        .gte("occurred_at", monthStart),
     ]);
 
     xeroReady =
       !paidInvoices.error && !outstandingInvoices.error && !paidBills.error;
 
     revenueYtd = sumField(paidInvoices.data ?? []);
+    revenueMtd = sumField(paidInvoicesMtd.data ?? []);
     revenueOutstanding = (outstandingInvoices.data ?? []).reduce(
       (s, r) => s + (Number(r.amount_due) || 0),
       0
     );
+    overdueCount = overdueInvoices.data?.length ?? 0;
+    overdueAmount = (overdueInvoices.data ?? []).reduce(
+      (s, r) => s + (Number(r.amount_due) || 0),
+      0
+    );
     expensesYtd = sumField(paidBills.data ?? []);
+    netProfitYtd = revenueYtd - expensesYtd;
+    gcCollectionsMtd = (gcPayments.data ?? []).reduce(
+      (s, r) => s + (Number((r as Record<string, unknown>).amount) || 0),
+      0
+    );
   }
 
   const rag = (n: number | null, red: boolean): Rag =>
@@ -411,37 +453,32 @@ export default async function DashboardPage({
         <>
           <div className="mt-8 mb-3 flex items-baseline gap-3">
             <h2 className="text-base font-semibold">Revenue snapshot</h2>
-            <Link href="/financial" className="text-primary text-xs hover:underline">
+            <Link href="/financial" className="text-primary text-xs hover:underline font-medium">
               Full P&amp;L →
             </Link>
             {!xeroReady && (
-              <span className="text-muted-foreground text-xs">
-                (Xero sync pending)
-              </span>
+              <span className="text-muted-foreground text-xs">(Xero sync pending)</span>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+
+          {/* Row 1: key money numbers */}
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             <Card className="h-full gap-2 py-4 border-l-4 border-l-success">
               <CardContent className="px-4">
-                <div className="text-2xl font-semibold tabular-nums">
+                <div className="text-2xl font-bold tabular-nums">
+                  {xeroReady ? formatMoney(revenueMtd) : "—"}
+                </div>
+                <div className="mt-1 text-sm font-medium">Revenue this month</div>
+                <div className="text-muted-foreground mt-0.5 text-xs">Xero paid invoices</div>
+              </CardContent>
+            </Card>
+            <Card className="h-full gap-2 py-4 border-l-4 border-l-success">
+              <CardContent className="px-4">
+                <div className="text-2xl font-bold tabular-nums">
                   {xeroReady ? formatMoney(revenueYtd) : "—"}
                 </div>
                 <div className="mt-1 text-sm font-medium">Revenue this FY</div>
-                <div className="text-muted-foreground mt-0.5 text-xs">paid invoices, Jul 1 onwards</div>
-              </CardContent>
-            </Card>
-            <Card
-              className={cn(
-                "h-full gap-2 py-4 border-l-4",
-                revenueOutstanding > 0 ? "border-l-warning" : "border-l-border"
-              )}
-            >
-              <CardContent className="px-4">
-                <div className="text-2xl font-semibold tabular-nums">
-                  {xeroReady ? formatMoney(revenueOutstanding) : "—"}
-                </div>
-                <div className="mt-1 text-sm font-medium">Outstanding revenue</div>
-                <div className="text-muted-foreground mt-0.5 text-xs">authorised, not yet paid</div>
+                <div className="text-muted-foreground mt-0.5 text-xs">paid invoices, Jul 1+</div>
               </CardContent>
             </Card>
             <Card
@@ -451,11 +488,68 @@ export default async function DashboardPage({
               )}
             >
               <CardContent className="px-4">
-                <div className="text-2xl font-semibold tabular-nums">
+                <div className="text-2xl font-bold tabular-nums">
                   {xeroReady ? formatMoney(expensesYtd) : "—"}
                 </div>
                 <div className="mt-1 text-sm font-medium">Expenses this FY</div>
-                <div className="text-muted-foreground mt-0.5 text-xs">paid bills, Jul 1 onwards</div>
+                <div className="text-muted-foreground mt-0.5 text-xs">paid bills, Jul 1+</div>
+              </CardContent>
+            </Card>
+            <Card
+              className={cn(
+                "h-full gap-2 py-4 border-l-4",
+                netProfitYtd >= 0 ? "border-l-success" : "border-l-destructive"
+              )}
+            >
+              <CardContent className="px-4">
+                <div className={cn("text-2xl font-bold tabular-nums", netProfitYtd < 0 && "text-destructive")}>
+                  {xeroReady ? formatMoney(netProfitYtd) : "—"}
+                </div>
+                <div className="mt-1 text-sm font-medium">Net profit this FY</div>
+                <div className="text-muted-foreground mt-0.5 text-xs">revenue minus expenses</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Row 2: receivables + GoCardless */}
+          <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3">
+            <Card
+              className={cn(
+                "h-full gap-2 py-4 border-l-4",
+                revenueOutstanding > 0 ? "border-l-warning" : "border-l-border"
+              )}
+            >
+              <CardContent className="px-4">
+                <div className="text-2xl font-bold tabular-nums">
+                  {xeroReady ? formatMoney(revenueOutstanding) : "—"}
+                </div>
+                <div className="mt-1 text-sm font-medium">Outstanding</div>
+                <div className="text-muted-foreground mt-0.5 text-xs">invoices not yet paid</div>
+              </CardContent>
+            </Card>
+            <Link href="/invoices">
+              <Card
+                className={cn(
+                  "h-full gap-2 py-4 border-l-4 cursor-pointer hover:shadow-md transition-shadow",
+                  overdueCount > 0 ? "border-l-destructive" : "border-l-border"
+                )}
+              >
+                <CardContent className="px-4">
+                  <div className={cn("text-2xl font-bold tabular-nums", overdueCount > 0 && "text-destructive")}>
+                    {xeroReady ? `${overdueCount} · ${formatMoney(overdueAmount)}` : "—"}
+                  </div>
+                  <div className="mt-1 text-sm font-medium">Overdue invoices</div>
+                  <div className="text-muted-foreground mt-0.5 text-xs">past due date — action needed</div>
+                </CardContent>
+              </Card>
+            </Link>
+            <Card className="h-full gap-2 py-4 border-l-4 border-l-success">
+              <CardContent className="px-4">
+                <div className="text-2xl font-bold tabular-nums">
+                  {formatMoney(gcCollectionsMtd)}
+                </div>
+                <div className="mt-1 text-sm font-medium">GoCardless collected</div>
+                <div className="text-muted-foreground mt-0.5 text-xs">direct debit this month</div>
               </CardContent>
             </Card>
           </div>

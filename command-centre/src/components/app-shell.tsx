@@ -92,15 +92,19 @@ function SidebarContent({
   const pathname = usePathname();
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden bg-zinc-950">
       {/* Brand */}
-      <div className="flex h-14 shrink-0 items-center border-b px-4">
+      <div className="flex h-14 shrink-0 items-center border-b border-zinc-800 px-4 gap-2">
+        {/* BFC logo mark */}
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded bg-red-600 text-white font-black text-xs leading-none select-none">
+          BFC
+        </div>
         <Link
           href="/dashboard"
-          className="text-sm font-semibold tracking-tight hover:opacity-80 transition-opacity"
+          className="text-sm font-semibold tracking-tight text-white hover:text-red-400 transition-colors"
           onClick={onNavClick}
         >
-          BFC Command Centre
+          Command Centre
         </Link>
       </div>
 
@@ -110,9 +114,9 @@ function SidebarContent({
           const groupItems = items.filter((i) => group.hrefs.includes(i.href));
           if (groupItems.length === 0) return null;
           return (
-            <div key={gi} className={gi > 0 ? "pt-3" : ""}>
+            <div key={gi} className={gi > 0 ? "pt-4" : ""}>
               {group.label && (
-                <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground select-none">
+                <p className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500 select-none">
                   {group.label}
                 </p>
               )}
@@ -130,8 +134,8 @@ function SidebarContent({
                       className={cn(
                         "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors",
                         isActive
-                          ? "bg-primary text-primary-foreground font-medium"
-                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                          ? "bg-red-600 text-white font-medium"
+                          : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
                       )}
                     >
                       <Icon d={ICONS[item.href] ?? ""} />
@@ -146,21 +150,21 @@ function SidebarContent({
       </nav>
 
       {/* User footer */}
-      <div className="shrink-0 border-t p-3">
+      <div className="shrink-0 border-t border-zinc-800 p-3">
         <div className="mb-2.5 flex items-center gap-2 px-1">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium leading-none">
+            <p className="truncate text-sm font-medium leading-none text-zinc-100">
               {profile.full_name || "unnamed"}
             </p>
             <div className="mt-1.5">
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 font-normal">
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 font-normal bg-zinc-800 text-zinc-400 border-zinc-700">
                 {ROLE_LABELS[profile.role]}
               </Badge>
             </div>
           </div>
         </div>
         <form action={signOut}>
-          <Button variant="outline" size="sm" className="w-full text-xs h-8" type="submit">
+          <Button variant="outline" size="sm" className="w-full text-xs h-8 border-zinc-700 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 bg-transparent" type="submit">
             Sign out
           </Button>
         </form>
@@ -184,14 +188,14 @@ export function AppShell({
   return (
     <div className="flex min-h-svh bg-background">
       {/* ── Desktop sidebar ──────────────────────────────────────────────── */}
-      <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:w-60 lg:flex-col lg:border-r lg:bg-card z-30">
+      <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:w-60 lg:flex-col border-r border-zinc-800 bg-zinc-950 z-30">
         <SidebarContent profile={profile} items={items} />
       </aside>
 
       {/* ── Mobile: backdrop ─────────────────────────────────────────────── */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/60 lg:hidden"
           onClick={() => setMobileOpen(false)}
           aria-hidden="true"
         />
@@ -200,7 +204,7 @@ export function AppShell({
       {/* ── Mobile: slide-out sidebar ─────────────────────────────────────── */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 border-r bg-card shadow-xl",
+          "fixed inset-y-0 left-0 z-50 w-64 border-r border-zinc-800 bg-zinc-950 shadow-xl",
           "transition-transform duration-200 ease-in-out lg:hidden",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
@@ -215,11 +219,11 @@ export function AppShell({
       {/* ── Main ─────────────────────────────────────────────────────────── */}
       <div className="flex min-w-0 flex-1 flex-col lg:pl-60">
         {/* Mobile top bar (hamburger only) */}
-        <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-card px-4 lg:hidden">
+        <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-zinc-950 border-zinc-800 px-4 lg:hidden">
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
-            className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors"
             aria-label="Open navigation"
           >
             <svg
@@ -233,7 +237,10 @@ export function AppShell({
               <path d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <span className="text-sm font-semibold">BFC Command Centre</span>
+          <div className="flex items-center gap-2">
+            <div className="flex h-6 w-6 items-center justify-center rounded bg-red-600 text-white font-black text-[10px] leading-none">BFC</div>
+            <span className="text-sm font-semibold text-white">Command Centre</span>
+          </div>
         </header>
 
         <main className="flex-1 p-6">{children}</main>
