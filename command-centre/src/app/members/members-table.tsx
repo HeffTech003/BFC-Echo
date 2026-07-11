@@ -13,7 +13,7 @@ export type MemberRow = {
   primary_phone: string | null;
   member_type: string | null;
   member_status: string | null;
-  created_at: string | null;
+  joined_at: string | null;
   merged_into: string | null;
 };
 
@@ -87,11 +87,11 @@ const COLUMNS: DataTableColumn<MemberRow>[] = [
     cell: (row) => <span>{row.primary_phone ?? "—"}</span>,
   },
   {
-    key: "created_at",
+    key: "joined_at",
     header: "Joined",
     className: "hidden lg:table-cell text-sm text-muted-foreground",
     headClassName: "hidden lg:table-cell",
-    cell: (row) => <span>{row.created_at ? formatDate(row.created_at) : "—"}</span>,
+    cell: (row) => <span>{row.joined_at ? formatDate(row.joined_at) : "—"}</span>,
   },
 ];
 
@@ -101,7 +101,4 @@ export function MembersTable({ members }: { members: MemberRow[] }) {
       data={members}
       columns={COLUMNS}
       searchPlaceholder="Search name, email, phone…"
-      emptyMessage="No members found."
-    />
-  );
-}
+ 
