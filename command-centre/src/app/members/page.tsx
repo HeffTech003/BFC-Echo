@@ -14,10 +14,14 @@ export default async function MembersPage() {
   const profile = await requireProfile();
   const supabase = await createClient();
 
+  // Exclude Xero-only contacts/suppliers — they're payees, not gym members.
+  const MEMBER_TYPES = ["gym_member", "nac", "online_customer", "staff"];
+
   const { data: members } = await supabase
     .from("members")
     .select("id, full_name, primary_email, primary_phone, member_type, member_status, created_at, merged_into")
     .is("merged_into", null)
+    .in("member_type", MEMBER_TYPES)
     .order("full_name")
     .limit(1000);
 
