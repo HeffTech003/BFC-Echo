@@ -45,10 +45,10 @@ export default async function RetentionPage() {
     // Members with suspended status — at risk of churning
     supabase
       .from("members")
-      .select("id, full_name, email, member_status, member_type, joined_at")
+      .select("id, full_name, primary_email, member_status, member_type, created_at")
       .in("member_status", ["suspended", "inactive"])
       .is("merged_into", null)
-      .order("joined_at", { ascending: false })
+      .order("created_at", { ascending: false })
       .limit(50),
 
     // Memberships that lapsed in last 60 days (end_date passed but status still active)
@@ -79,8 +79,8 @@ export default async function RetentionPage() {
     // New members in last 90 days for net growth context
     supabase
       .from("members")
-      .select("id, joined_at")
-      .gte("joined_at", nDaysAgo(90))
+      .select("id, created_at")
+      .gte("created_at", nDaysAgo(90))
       .is("merged_into", null),
   ]);
 
@@ -102,7 +102,7 @@ export default async function RetentionPage() {
     ? ((cancelledLast30 / totalMembers) * 100).toFixed(1)
     : "0.0";
 
-  const newLast30 = recentJoins.filter(m => m.joined_at >= nDaysAgo(30)).length;
+  const newLast30 = recentJoins.filter(m => m.created_at >= nDaysAgo(30)).length;
   const netGrowth30 = newLast30 - cancelledLast30;
 
   const revenueAtRisk = outstandingInvoices.reduce(
@@ -149,8 +149,8 @@ export default async function RetentionPage() {
     if (months.includes(mk)) cancellationsByMonth[mk]++;
   }
   for (const m of recentJoins) {
-    if (!m.joined_at) continue;
-    const mk = monthKey(m.joined_at);
+    if (!m.created_at) continue;
+    const mk = monthKey(m.created_at);
     if (months.includes(mk)) joinsByMonth[mk]++;
   }
 
@@ -333,7 +333,7 @@ export default async function RetentionPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {m.joined_at ? formatDate(m.joined_at) : "—"}
+                      {m.created_at ? formatDate(m.created_at) : "—"}
                     </TableCell>
                   </TableRow>
                 ))}

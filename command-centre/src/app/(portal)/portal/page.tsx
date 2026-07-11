@@ -55,8 +55,8 @@ export default async function PortalPage() {
   // Fetch member record for this user
   const { data: member } = await supabase
     .from("members")
-    .select("id, full_name, email, phone, member_type, member_status, joined_at")
-    .eq("email", userEmail)
+    .select("id, full_name, primary_email, primary_phone, member_type, member_status, created_at")
+    .eq("primary_email", userEmail)
     .single();
 
   if (!member) {
@@ -144,7 +144,7 @@ export default async function PortalPage() {
             <div className="flex items-start justify-between">
               <div>
                 <h2 className="text-xl font-semibold">{member.full_name ?? "Member"}</h2>
-                <p className="text-sm text-muted-foreground mt-0.5">{member.email}</p>
+                <p className="text-sm text-muted-foreground mt-0.5">{member.primary_email}</p>
               </div>
               <Badge
                 variant="secondary"
@@ -156,11 +156,11 @@ export default async function PortalPage() {
             <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-muted-foreground text-xs">Phone</p>
-                <p>{member.phone ?? "—"}</p>
+                <p>{member.primary_phone ?? "—"}</p>
               </div>
               <div>
                 <p className="text-muted-foreground text-xs">Member since</p>
-                <p>{member.joined_at ? formatDate(member.joined_at) : "—"}</p>
+                <p>{member.created_at ? formatDate(member.created_at) : "—"}</p>
               </div>
             </div>
           </CardContent>

@@ -26,12 +26,12 @@ import { CreateTaskButton } from "@/components/create-task-button";
 type Member = {
   id: string;
   full_name: string | null;
-  email: string | null;
-  phone: string | null;
+  primary_email: string | null;
+  primary_phone: string | null;
   date_of_birth: string | null;
   member_type: string | null;
   member_status: string | null;
-  joined_at: string | null;
+  created_at: string | null;
   merged_into: string | null;
   notes: string | null;
 };
@@ -244,7 +244,7 @@ export default async function MemberProfilePage({
   ] = await Promise.all([
     supabase
       .from("members")
-      .select("id, full_name, email, phone, date_of_birth, member_type, member_status, joined_at, merged_into, notes")
+      .select("id, full_name, primary_email, primary_phone, date_of_birth, member_type, member_status, created_at, merged_into, notes")
       .eq("id", id)
       .single(),
 
@@ -424,11 +424,11 @@ export default async function MemberProfilePage({
               {isAdmin && (
                 <div className="flex flex-wrap gap-2">
                   {/* Send email/SMS */}
-                  {(member.email || member.phone) && (
+                  {(member.primary_email || member.primary_phone) && (
                     <SendMessageButton
                       memberId={member.id}
-                      toEmail={member.email ?? undefined}
-                      toPhone={member.phone ?? undefined}
+                      toEmail={member.primary_email ?? undefined}
+                      toPhone={member.primary_phone ?? undefined}
                       memberName={member.full_name ?? undefined}
                     />
                   )}
@@ -443,11 +443,11 @@ export default async function MemberProfilePage({
           <div className="mt-4 grid grid-cols-2 gap-x-8 gap-y-2 text-sm sm:grid-cols-4">
             <div>
               <div className="text-muted-foreground text-xs">Email</div>
-              <div className="truncate">{member.email ?? "—"}</div>
+              <div className="truncate">{member.primary_email ?? "—"}</div>
             </div>
             <div>
               <div className="text-muted-foreground text-xs">Phone</div>
-              <div>{member.phone ?? "—"}</div>
+              <div>{member.primary_phone ?? "—"}</div>
             </div>
             <div>
               <div className="text-muted-foreground text-xs">Date of birth</div>
@@ -455,7 +455,7 @@ export default async function MemberProfilePage({
             </div>
             <div>
               <div className="text-muted-foreground text-xs">Joined</div>
-              <div>{member.joined_at ? formatDate(member.joined_at) : "—"}</div>
+              <div>{member.created_at ? formatDate(member.created_at) : "—"}</div>
             </div>
           </div>
 
@@ -830,8 +830,8 @@ export default async function MemberProfilePage({
                     {(r.first_name || r.last_name) && (
                       <div>Name: {[r.first_name, r.last_name].filter(Boolean).join(" ")}</div>
                     )}
-                    {r.email && r.email !== member.email && <div>Email: {r.email}</div>}
-                    {r.phone && r.phone !== member.phone && <div>Phone: {r.phone}</div>}
+                    {r.email && r.email !== member.primary_email && <div>Email: {r.email}</div>}
+                    {r.phone && r.phone !== member.primary_phone && <div>Phone: {r.phone}</div>}
                   </div>
                 </div>
               ))
