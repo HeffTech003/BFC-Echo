@@ -16,7 +16,7 @@ export default async function MembersPage() {
 
   const { data: members } = await supabase
     .from("members")
-    .select("id, full_name, email, phone, member_type, member_status, joined_at, merged_into")
+    .select("id, full_name, primary_email, primary_phone, member_type, member_status, created_at, merged_into")
     .is("merged_into", null)
     .order("full_name")
     .limit(1000);

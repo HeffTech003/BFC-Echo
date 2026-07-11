@@ -9,11 +9,11 @@ import { cn } from "@/lib/utils";
 export type MemberRow = {
   id: string;
   full_name: string | null;
-  email: string | null;
-  phone: string | null;
+  primary_email: string | null;
+  primary_phone: string | null;
   member_type: string | null;
   member_status: string | null;
-  joined_at: string | null;
+  created_at: string | null;
   merged_into: string | null;
 };
 
@@ -70,28 +70,28 @@ const COLUMNS: DataTableColumn<MemberRow>[] = [
     ),
   },
   {
-    key: "email",
+    key: "primary_email",
     header: "Email",
     className: "hidden sm:table-cell text-sm text-muted-foreground max-w-[200px] truncate",
     headClassName: "hidden sm:table-cell",
     cell: (row) => (
-      <span className="truncate block max-w-[200px]">{row.email ?? "—"}</span>
+      <span className="truncate block max-w-[200px]">{row.primary_email ?? "—"}</span>
     ),
   },
   {
-    key: "phone",
+    key: "primary_phone",
     header: "Phone",
     className: "hidden md:table-cell text-sm text-muted-foreground",
     headClassName: "hidden md:table-cell",
     sortable: false,
-    cell: (row) => <span>{row.phone ?? "—"}</span>,
+    cell: (row) => <span>{row.primary_phone ?? "—"}</span>,
   },
   {
-    key: "joined_at",
+    key: "created_at",
     header: "Joined",
     className: "hidden lg:table-cell text-sm text-muted-foreground",
     headClassName: "hidden lg:table-cell",
-    cell: (row) => <span>{row.joined_at ? formatDate(row.joined_at) : "—"}</span>,
+    cell: (row) => <span>{row.created_at ? formatDate(row.created_at) : "—"}</span>,
   },
 ];
 
