@@ -101,4 +101,7 @@ export function MembersTable({ members }: { members: MemberRow[] }) {
       data={members}
       columns={COLUMNS}
       searchPlaceholder="Search name, email, phone…"
- 
+       emptyMessage="No members found."
+    />
+  );
+}
