@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/table";
 import { formatDate, formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { MandateActions } from "@/components/mandate-actions";
 import { SendMessageButton } from "@/components/send-message-button";
 import { CreateTaskButton } from "@/components/create-task-button";
 import { RelationshipManager, type RelationshipRow } from "@/components/relationship-manager";
@@ -57,14 +56,6 @@ type Membership = {
   start_date: string | null;
   end_date: string | null;
   created_at: string;
-};
-
-type GCMandate = {
-  id: string;
-  gc_mandate_id: string | null;
-  status: string | null;
-  scheme: string | null;
-  created_at: string | null;
 };
 
 type PaymentEvent = {
@@ -248,7 +239,6 @@ export default async function MemberProfilePage({
     memberRes,
     sourceRecordsRes,
     membershipsRes,
-    mandatesRes,
     paymentEventsRes,
     tasksRes,
     cancellationsRes,
@@ -273,13 +263,6 @@ export default async function MemberProfilePage({
       .eq("member_id", id)
       .order("created_at", { ascending: false }),
 
-    supabase
-      .from("gocardless_mandates")
-      .select("id, gc_mandate_id, status, scheme, created_at")
-      .eq("member_id", id)
-      .order("created_at", { ascending: false }),
-
-    // Try direct member_id first
     supabase
       .from("payment_events")
       .select("id, event_type, amount, currency, occurred_at, description, mandate_id")
@@ -323,7 +306,6 @@ export default async function MemberProfilePage({
   const member        = memberRes.data as Member;
   const sourceRecords = (sourceRecordsRes.data ?? []) as SourceRecord[];
   const memberships   = (membershipsRes.data ?? []) as Membership[];
-  const mandates      = (mandatesRes.data ?? []) as GCMandate[];
   const tasks         = (tasksRes.data ?? []) as Task[];
   const cancellations = (cancellationsRes.data ?? []) as CancellationRequest[];
 
@@ -342,26 +324,7 @@ export default async function MemberProfilePage({
     };
   });
 
-  // ── Payment events: fallback to mandate_id join if direct query empty ─────
-  // (handles schemas where payment_events links via mandate rather than member_id)
-
-  let paymentEvents: PaymentEvent[] = (paymentEventsRes.data ?? []) as PaymentEvent[];
-
-  if (paymentEvents.length === 0 && mandates.length > 0) {
-    const mandateIds = mandates
-      .map(m => m.gc_mandate_id)
-      .filter(Boolean) as string[];
-
-    if (mandateIds.length > 0) {
-      const { data: fallbackEvents } = await supabase
-        .from("payment_events")
-        .select("id, event_type, amount, currency, occurred_at, description, mandate_id")
-        .in("mandate_id", mandateIds)
-        .order("occurred_at", { ascending: false })
-        .limit(30);
-      paymentEvents = (fallbackEvents ?? []) as PaymentEvent[];
-    }
-  }
+  const paymentEvents: PaymentEvent[] = (paymentEventsRes.data ?? []) as PaymentEvent[];
 
   // ── Xero invoices via contact link ────────────────────────────────────────
 
@@ -387,8 +350,6 @@ export default async function MemberProfilePage({
 
   const gcSourceRecord = sourceRecords.find(r => r.source_system === "gocardless");
   const gcCustomerId   = gcSourceRecord?.external_id;
-
-  const activeMandate = mandates.find(m => m.status === "active");
 
   const totalPaid = xeroInvoices
     .filter(i => i.status === "PAID")
@@ -583,45 +544,6 @@ export default async function MemberProfilePage({
                 ))}
               </TableBody>
             </Table>
-          </div>
-        )}
-
-        {/* GoCardless mandates with action controls */}
-        {mandates.length > 0 && (
-          <div className="mt-4 border-t pt-4">
-            <h3 className="text-sm font-medium mb-3">
-              GoCardless Mandates
-              {activeMandate && (
-                <Badge className="ml-2 bg-success/15 text-success-foreground font-normal text-xs">
-                  1 active
-                </Badge>
-              )}
-            </h3>
-            <div className="flex flex-wrap gap-3">
-              {mandates.map((m) => (
-                <div key={m.id} className="rounded-md border px-3 py-2.5 text-sm min-w-[220px]">
-                  <div className="font-mono text-xs text-muted-foreground">{m.gc_mandate_id}</div>
-                  <div className="mt-1 flex gap-2 items-center">
-                    <Pill value={m.status} />
-                    {m.scheme && (
-                      <span className="text-xs text-muted-foreground uppercase">{m.scheme}</span>
-                    )}
-                  </div>
-                  <div className="mt-0.5 text-xs text-muted-foreground">
-                    Created {m.created_at ? formatDate(m.created_at) : "—"}
-                  </div>
-                  {/* Mandate action buttons — only for admins, only if mandate has an ID */}
-                  {m.gc_mandate_id && (
-                    <MandateActions
-                      gcMandateId={m.gc_mandate_id}
-                      memberId={id}
-                      status={m.status}
-                      canWrite={isAdmin}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
           </div>
         )}
 
@@ -840,3 +762,54 @@ export default async function MemberProfilePage({
                         {c.requested_end_date ? formatDate(c.requested_end_date) : "—"}
                       </TableCell>
                     </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+          {cancellations.some(c => c.notes) && (
+            <div className="mt-3 border-t pt-3 space-y-2">
+              {cancellations.filter(c => c.notes).map(c => (
+                <div key={c.id} className="text-sm">
+                  <span className="text-muted-foreground text-xs">{formatDate(c.created_at)}: </span>
+                  {c.notes}
+                </div>
+              ))}
+            </div>
+          )}
+        </Section>
+      )}
+
+      {/* ── Source records ────────────────────────────────────────────────── */}
+      {isAdmin && (
+        <Section title="Source Records" count={sourceRecords.length}>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {sourceRecords.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No source records linked.</p>
+            ) : (
+              sourceRecords.map((r) => (
+                <div key={r.id} className="rounded-md border p-3 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{SOURCE_LABEL(r.source_system)}</span>
+                    <Pill value={r.match_status} />
+                  </div>
+                  <div className="mt-1 space-y-0.5 text-muted-foreground text-xs">
+                    {r.external_id && (
+                      <div>ID: <code className="text-foreground">{r.external_id}</code></div>
+                    )}
+                    {(r.first_name || r.last_name) && (
+                      <div>Name: {[r.first_name, r.last_name].filter(Boolean).join(" ")}</div>
+                    )}
+                    {r.email && r.email !== member.primary_email && <div>Email: {r.email}</div>}
+                    {r.phone && r.phone !== member.primary_phone && <div>Phone: {r.phone}</div>}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </Section>
+      )}
+    </AppShell>
+  );
+}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     
