@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { DataTable, type DataTableColumn } from "@/components/ui/data-table";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -95,13 +97,4 @@ const COLUMNS: DataTableColumn<MemberRow>[] = [
   },
 ];
 
-export function MembersTable({ members }: { members: MemberRow[] }) {
-  return (
-    <DataTable
-      data={members}
-      columns={COLUMNS}
-      searchPlaceholder="Search name, email, phone…"
-       emptyMessage="No members found."
-    />
-  );
-}
+// ── Filter chip definitions ─────────────────────────────────────────────�
