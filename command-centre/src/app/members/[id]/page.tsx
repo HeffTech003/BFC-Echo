@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { MandateActions } from "@/components/mandate-actions";
 import { SendMessageButton } from "@/components/send-message-button";
 import { CreateTaskButton } from "@/components/create-task-button";
+import { RelationshipManager, type RelationshipRow } from "@/components/relationship-manager";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -98,6 +99,17 @@ type Task = {
   created_at: string;
   notes: string | null;
   assigned_to: string | null;
+};
+
+type Relationship = {
+  id: string;
+  member_id: string;
+  related_member_id: string;
+  relationship_type: string;
+  notes: string | null;
+  // joined
+  member:         { id: string; full_name: string | null; member_type: string | null; member_status: string | null } | null;
+  related_member: { id: string; full_name: string | null; member_type: string | null; member_status: string | null } | null;
 };
 
 type CancellationRequest = {
@@ -241,6 +253,7 @@ export default async function MemberProfilePage({
     tasksRes,
     cancellationsRes,
     xeroContactRes,
+    relationshipsRes,
   ] = await Promise.all([
     supabase
       .from("members")
@@ -292,6 +305,17 @@ export default async function MemberProfilePage({
       .select("xero_contact_id")
       .eq("member_id", id)
       .single(),
+
+    // Relationships — fetch both outgoing (member_id=id) and incoming (related_member_id=id)
+    supabase
+      .from("member_relationships")
+      .select(`
+        id, member_id, related_member_id, relationship_type, notes,
+        member:member_id(id, full_name, member_type, member_status),
+        related_member:related_member_id(id, full_name, member_type, member_status)
+      `)
+      .or(`member_id.eq.${id},related_member_id.eq.${id}`)
+      .order("created_at"),
   ]);
 
   if (memberRes.error || !memberRes.data) notFound();
@@ -302,6 +326,21 @@ export default async function MemberProfilePage({
   const mandates      = (mandatesRes.data ?? []) as GCMandate[];
   const tasks         = (tasksRes.data ?? []) as Task[];
   const cancellations = (cancellationsRes.data ?? []) as CancellationRequest[];
+
+  // Normalise relationships — tag each row as outgoing or incoming from this member's POV
+  const rawRelationships = (relationshipsRes.data ?? []) as Relationship[];
+  const relationships: RelationshipRow[] = rawRelationships.map((r) => {
+    const outgoing = r.member_id === id;
+    return {
+      id:                r.id,
+      member_id:         r.member_id,
+      related_member_id: r.related_member_id,
+      relationship_type: r.relationship_type,
+      notes:             r.notes,
+      related_member:    outgoing ? r.related_member : r.member,
+      direction:         outgoing ? "outgoing" : "incoming",
+    };
+  });
 
   // ── Payment events: fallback to mandate_id join if direct query empty ─────
   // (handles schemas where payment_events links via mandate rather than member_id)
@@ -464,6 +503,15 @@ export default async function MemberProfilePage({
           )}
         </CardContent>
       </Card>
+
+      {/* ── Relationships ─────────────────────────────────────────────────── */}
+      <Section title="Family & Relationships" count={relationships.length}>
+        <RelationshipManager
+          currentMemberId={id}
+          relationships={relationships}
+          canWrite={isAdmin}
+        />
+      </Section>
 
       {/* ── NAC guardian ──────────────────────────────────────────────────── */}
       {isNac && (
@@ -791,54 +839,4 @@ export default async function MemberProfilePage({
                       <TableCell className="text-sm">
                         {c.requested_end_date ? formatDate(c.requested_end_date) : "—"}
                       </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-          {cancellations.some(c => c.notes) && (
-            <div className="mt-3 border-t pt-3 space-y-2">
-              {cancellations.filter(c => c.notes).map(c => (
-                <div key={c.id} className="text-sm">
-                  <span className="text-muted-foreground text-xs">{formatDate(c.created_at)}: </span>
-                  {c.notes}
-                </div>
-              ))}
-            </div>
-          )}
-        </Section>
-      )}
-
-      {/* ── Source records ────────────────────────────────────────────────── */}
-      {isAdmin && (
-        <Section title="Source Records" count={sourceRecords.length}>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {sourceRecords.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No source records linked.</p>
-            ) : (
-              sourceRecords.map((r) => (
-                <div key={r.id} className="rounded-md border p-3 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">{SOURCE_LABEL(r.source_system)}</span>
-                    <Pill value={r.match_status} />
-                  </div>
-                  <div className="mt-1 space-y-0.5 text-muted-foreground text-xs">
-                    {r.external_id && (
-                      <div>ID: <code className="text-foreground">{r.external_id}</code></div>
-                    )}
-                    {(r.first_name || r.last_name) && (
-                      <div>Name: {[r.first_name, r.last_name].filter(Boolean).join(" ")}</div>
-                    )}
-                    {r.email && r.email !== member.primary_email && <div>Email: {r.email}</div>}
-                    {r.phone && r.phone !== member.primary_phone && <div>Phone: {r.phone}</div>}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </Section>
-      )}
-    </AppShell>
-  );
-}
+                    </Table
