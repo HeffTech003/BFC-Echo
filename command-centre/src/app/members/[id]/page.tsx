@@ -32,7 +32,7 @@ type Member = {
   date_of_birth: string | null;
   member_type: string | null;
   member_status: string | null;
-  created_at: string | null;
+  joined_at: string | null;
   merged_into: string | null;
   notes: string | null;
 };
@@ -257,7 +257,7 @@ export default async function MemberProfilePage({
   ] = await Promise.all([
     supabase
       .from("members")
-      .select("id, full_name, primary_email, primary_phone, date_of_birth, member_type, member_status, created_at, merged_into, notes")
+      .select("id, full_name, primary_email, primary_phone, date_of_birth, member_type, member_status, joined_at, merged_into, notes")
       .eq("id", id)
       .single(),
 
@@ -494,7 +494,7 @@ export default async function MemberProfilePage({
             </div>
             <div>
               <div className="text-muted-foreground text-xs">Joined</div>
-              <div>{member.created_at ? formatDate(member.created_at) : "—"}</div>
+              <div>{member.joined_at ? formatDate(member.joined_at) : "—"}</div>
             </div>
           </div>
 
@@ -839,4 +839,4 @@ export default async function MemberProfilePage({
                       <TableCell className="text-sm">
                         {c.requested_end_date ? formatDate(c.requested_end_date) : "—"}
                       </TableCell>
-                    </Table
+                    </TableRow>
