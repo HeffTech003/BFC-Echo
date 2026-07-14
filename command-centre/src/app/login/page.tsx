@@ -10,7 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export const metadata = { title: "Sign in — BFC Command Centre" };
+export const metadata = { title: "Sign in — Bendigo Fight Centre" };
 
 export default async function LoginPage({
   searchParams,
@@ -23,7 +23,7 @@ export default async function LoginPage({
     <main className="flex min-h-svh items-center justify-center p-6">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-xl">BFC Command Centre</CardTitle>
+          <CardTitle className="text-xl">Bendigo Fight Centre</CardTitle>
           <CardDescription>
             Staff sign-in. Access is role-based and audited.
           </CardDescription>

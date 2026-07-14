@@ -23,4 +23,5 @@ export interface Profile {
   full_name: string;
   role: Role;
   active: boolean;
+  member_id: string | null;
 }

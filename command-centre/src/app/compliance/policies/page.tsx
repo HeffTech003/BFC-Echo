@@ -26,7 +26,7 @@ import {
   recordAcknowledgement,
 } from "./actions";
 
-export const metadata = { title: "Policies — BFC Command Centre" };
+export const metadata = { title: "Policies — Bendigo Fight Centre" };
 
 export default async function PoliciesPage() {
   const profile = await requireProfile();

@@ -16,7 +16,7 @@ import {
 import { formatDate, formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-export const metadata = { title: "Expenses — BFC Command Centre" };
+export const metadata = { title: "Expenses — Bendigo Fight Centre" };
 
 const STATUS_COLOURS: Record<string, string> = {
   PAID:       "bg-success/15 text-success-foreground",

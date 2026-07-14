@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/table";
 import { formatDateTime, formatMoney, isoDaysAgo, sourceLabel } from "@/lib/format";
 
-export const metadata = { title: "Payments — BFC Command Centre" };
+export const metadata = { title: "Payments — Bendigo Fight Centre" };
 
 export default async function PaymentsPage() {
   const profile = await requireRole(["owner_director", "operations_admin", "finance"]);
@@ -32,7 +32,7 @@ export default async function PaymentsPage() {
   const thirtyDaysAgo = isoDaysAgo(30);
   const ninetyDaysAgo = isoDaysAgo(90);
 
-  const [failedRes, revenueRes, legacyRes] = await Promise.all([
+  const [failedRes, revenueRes, xeroRevenueRes, legacyRes] = await Promise.all([
     supabase
       .from("payment_events")
       .select("*, member:members(id, full_name)")
@@ -40,11 +40,19 @@ export default async function PaymentsPage() {
       .gte("occurred_at", ninetyDaysAgo)
       .order("occurred_at", { ascending: false })
       .limit(100),
+    // GoCardless / Square / WooCommerce payments via payment_events
     supabase
       .from("payment_events")
       .select("source_system, amount")
       .in("event_type", ["payment_paid", "order"])
       .gte("occurred_at", thirtyDaysAgo),
+    // Xero invoiced revenue — stored in xero_invoices, not payment_events
+    supabase
+      .from("xero_invoices")
+      .select("total")
+      .eq("invoice_type", "ACCREC")
+      .eq("status", "PAID")
+      .gte("date", thirtyDaysAgo.slice(0, 10)),
     supabase
       .from("memberships")
       .select("*, member:members(id, full_name)")
@@ -57,7 +65,14 @@ export default async function PaymentsPage() {
   const failed = failedRes.data ?? [];
   const legacy = legacyRes.data ?? [];
 
+  const xeroRevenue30d = (xeroRevenueRes.data ?? []).reduce(
+    (s, r) => s + (Number(r.total) || 0),
+    0
+  );
+
   const revenueBySource = new Map<string, number>();
+  // Xero revenue comes from xero_invoices, not payment_events
+  revenueBySource.set("xero", xeroRevenue30d);
   for (const row of revenueRes.data ?? []) {
     revenueBySource.set(
       row.source_system,
@@ -184,12 +199,16 @@ export default async function PaymentsPage() {
                         )}
                       </TableCell>
                       <TableCell>{m.membership_type ?? "—"}</TableCell>
-                      <TableCell>
-                        {formatMoney(m.amount)}
-                        {m.billing_interval ? `/${m.billing_interval}` : ""}
+                                            <TableCell className="tabular-nums">
+                        {m.amount != null ? formatMoney(m.amount / 100) : "—"}
+                        {m.billing_interval ? ` / ${m.billing_interval}` : ""}
                       </TableCell>
-                      <TableCell className="font-mono text-xs">{m.source_record_id}</TableCell>
-                      <TableCell className="text-xs">{formatDateTime(m.last_synced_at)}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {m.source_record_id ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {m.last_synced_at ? formatDateTime(m.last_synced_at) : "—"}
+                      </TableCell>
                     </TableRow>
                   );
                 })}

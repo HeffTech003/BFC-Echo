@@ -17,7 +17,7 @@ import { formatDate, formatMoney } from "@/lib/format";
 import { RetentionCharts } from "@/components/retention-charts";
 import { cn } from "@/lib/utils";
 
-export const metadata = { title: "Retention — BFC Command Centre" };
+export const metadata = { title: "Retention — Bendigo Fight Centre" };
 
 const today = new Date().toISOString().slice(0, 10);
 const nDaysAgo = (n: number) =>
@@ -76,11 +76,12 @@ export default async function RetentionPage() {
       .select("member_status")
       .is("merged_into", null),
 
-    // New members in last 90 days for net growth context
+    // New members in last 12 months for net growth context
+    // Use joined_at (actual join date) not created_at (sync/import date)
     supabase
       .from("members")
-      .select("id, created_at")
-      .gte("created_at", nDaysAgo(90))
+      .select("id, joined_at, created_at")
+      .gte("created_at", nDaysAgo(365))
       .is("merged_into", null),
   ]);
 
@@ -102,7 +103,7 @@ export default async function RetentionPage() {
     ? ((cancelledLast30 / totalMembers) * 100).toFixed(1)
     : "0.0";
 
-  const newLast30 = recentJoins.filter(m => m.created_at >= nDaysAgo(30)).length;
+  const newLast30 = recentJoins.filter(m => (m.joined_at ?? m.created_at) >= nDaysAgo(30)).length;
   const netGrowth30 = newLast30 - cancelledLast30;
 
   const revenueAtRisk = outstandingInvoices.reduce(
@@ -149,8 +150,9 @@ export default async function RetentionPage() {
     if (months.includes(mk)) cancellationsByMonth[mk]++;
   }
   for (const m of recentJoins) {
-    if (!m.created_at) continue;
-    const mk = monthKey(m.created_at);
+    const dateStr = m.joined_at ?? m.created_at;
+    if (!dateStr) continue;
+    const mk = monthKey(dateStr);
     if (months.includes(mk)) joinsByMonth[mk]++;
   }
 
@@ -396,11 +398,44 @@ export default async function RetentionPage() {
         </Card>
       )}
 
-      <p className="text-xs text-muted-foreground">
-        Cancellation data from Supabase · Invoice data from Xero via WF18.{" "}
-        <Link href="/cancellations" className="text-primary hover:underline">
-          All cancellations →
-        </Link>
+
+      {/* Re-engagement section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Re-engagement Automation</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Trigger personalised re-engagement emails to lapsed members via n8n.
+            Members contacted in the last 30 days are excluded automatically.
+          </p>
+          <form action={async () => {
+            "use server";
+            const { requireRole } = await import("@/lib/auth");
+            await requireRole(["owner_director", "operations_admin"]);
+            const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://bfc-echo.vercel.app";
+            await fetch(`${baseUrl}/api/reengage`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-webhook-secret": process.env.N8N_WEBHOOK_SECRET ?? "",
+              },
+              body: JSON.stringify({}),
+            });
+          }}>
+            <button type="submit"
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+              Run Re-engagement Campaign
+            </button>
+          </form>
+          <p className="text-xs text-muted-foreground">
+            Requires N8N_REENGAGE_WEBHOOK_URL to be set in .env.local.
+          </p>
+        </CardContent>
+      </Card>
+
+      <p className="text-xs text-muted-foreground mt-6">
+        Cancellation data from Supabase · Invoice data from Xero via WF18. Data refreshes on next sync.
       </p>
     </AppShell>
   );

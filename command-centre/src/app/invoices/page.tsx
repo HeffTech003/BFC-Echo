@@ -16,7 +16,7 @@ import {
 import { formatDate, formatMoney, isoToday } from "@/lib/format";
 import { updateInvoice } from "./actions";
 
-export const metadata = { title: "Supplier Invoices — BFC Command Centre" };
+export const metadata = { title: "Supplier Invoices — Bendigo Fight Centre" };
 
 const STATUS_VARIANT: Record<string, "warning" | "secondary" | "success" | "destructive" | "outline"> = {
   pending_review: "warning",

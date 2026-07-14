@@ -25,7 +25,7 @@ import {
 import { formatDate, formatDateTime, isoDaysAgo } from "@/lib/format";
 import { createFormLink, expireFormLink } from "./actions";
 
-export const metadata = { title: "Medical Forms — BFC Command Centre" };
+export const metadata = { title: "Medical Forms — Bendigo Fight Centre" };
 
 export default async function FormsPage() {
   const profile = await requireRole(["owner_director", "child_safety_lead"]);

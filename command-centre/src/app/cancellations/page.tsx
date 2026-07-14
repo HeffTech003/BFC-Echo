@@ -17,7 +17,7 @@ import {
 import { formatDate, formatDateTime } from "@/lib/format";
 import { updateCancellation } from "./actions";
 
-export const metadata = { title: "Cancellations — BFC Command Centre" };
+export const metadata = { title: "Cancellations — Bendigo Fight Centre" };
 
 const STATUS_VARIANT: Record<string, "secondary" | "warning" | "success" | "outline"> = {
   new: "warning",

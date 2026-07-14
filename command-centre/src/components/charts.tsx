@@ -1,5 +1,5 @@
 // components/charts.tsx
-// Reusable Recharts-based chart components for BFC Command Centre.
+// Reusable Recharts-based chart components for Bendigo Fight Centre.
 // All components are client-side ("use client").
 "use client";
 

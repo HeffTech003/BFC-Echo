@@ -216,7 +216,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const supabase = await createClient();
   const { data } = await supabase.from("members").select("full_name").eq("id", id).single();
-  return { title: `${data?.full_name ?? "Member"} — BFC Command Centre` };
+  return { title: `${data?.full_name ?? "Member"} — Bendigo Fight Centre` };
 }
 
 // ── Page ─────────────────────────────────────────────────────────────────────
@@ -310,7 +310,7 @@ export default async function MemberProfilePage({
   const cancellations = (cancellationsRes.data ?? []) as CancellationRequest[];
 
   // Normalise relationships — tag each row as outgoing or incoming from this member's POV
-  const rawRelationships = (relationshipsRes.data ?? []) as Relationship[];
+  const rawRelationships = (relationshipsRes.data ?? []) as unknown as Relationship[];
   const relationships: RelationshipRow[] = rawRelationships.map((r) => {
     const outgoing = r.member_id === id;
     return {
@@ -812,4 +812,3 @@ export default async function MemberProfilePage({
     </AppShell>
   );
 }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     

@@ -22,7 +22,7 @@ import { FunnelChart } from "@/components/funnel-chart";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-export const metadata = { title: "Trial Funnel — BFC Command Centre" };
+export const metadata = { title: "Trial Funnel — Bendigo Fight Centre" };
 
 const nDaysAgo = (n: number) =>
   new Date(Date.now() - n * 86_400_000).toISOString();

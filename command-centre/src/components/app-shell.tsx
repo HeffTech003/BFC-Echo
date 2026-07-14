@@ -47,6 +47,17 @@ const ICONS: Record<string, string> = {
   "/actions-queue":   "M13 10V3L4 14h7v7l9-11h-7",
   "/compliance":      "M9 12l2 2 4-4M20.618 5.984A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z",
   "/audit":           "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",
+  "/hours":           "M12 6v6l4 2M12 2a10 10 0 100 20A10 10 0 0012 2z",
+  "/payroll":         "M9 8h6m-5 4h4m-6 4h8M5 5h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z",
+  "/timetable":       "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z",
+  "/attendance":      "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4",
+  "/grading":         "M12 15l-2 5L9 9l11 3-5 2zm0 0l5-5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122",
+  "/merch":           "M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z",
+  "/settings":        "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM15 12a3 3 0 11-6 0 3 3 0 016 0z",
+  "/advisor":         "M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z",
+  "/email-triage":    "M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z",
+  "/bank-feed":        "M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z",
+  "/campaigns":        "M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z",
 };
 
 // ── Nav config ────────────────────────────────────────────────────────────────
@@ -67,25 +78,34 @@ const NAV: NavItem[] = [
   { href: "/email-review",   label: "Email Review",   roles: ["owner_director", "operations_admin"] },
   { href: "/cancellations",  label: "Cancellations",  roles: ["owner_director", "operations_admin", "finance"] },
   { href: "/communications", label: "Communications", roles: ["owner_director", "operations_admin"] },
+  { href: "/campaigns",       label: "Campaigns",       roles: ["owner_director", "operations_admin"] },
   { href: "/invoices",       label: "Invoices",       roles: ["owner_director", "operations_admin", "finance"] },
   { href: "/financial",      label: "Financial",      roles: ["owner_director", "operations_admin", "finance"] },
   { href: "/subscriptions",  label: "Subscriptions",  roles: ["owner_director", "operations_admin", "finance"] },
   { href: "/expenses",       label: "Expenses",       roles: ["owner_director", "operations_admin", "finance"] },
   { href: "/payments",       label: "Payments",       roles: ["owner_director", "operations_admin", "finance"] },
+  { href: "/bank-feed",      label: "Bank Feed",      roles: ["owner_director", "operations_admin", "finance"] },
   { href: "/match-queue",    label: "Match Queue",    roles: ["owner_director", "operations_admin"] },
   { href: "/sync",           label: "Sync",           roles: ["owner_director", "operations_admin", "finance"] },
   { href: "/actions-queue",  label: "Actions",        roles: ["owner_director", "operations_admin", "finance"] },
+  { href: "/hours",           label: "Hours",          roles: ["owner_director", "operations_admin", "finance", "coach"] },
   { href: "/compliance",     label: "Compliance",     roles: ["owner_director", "operations_admin", "child_safety_lead", "coach"] },
   { href: "/audit",          label: "Audit",          roles: ["owner_director"] },
+  { href: "/merch",          label: "Merch Shop" },
+  { href: "/advisor",        label: "AI Advisor" },
+  { href: "/settings",       label: "Integrations",    roles: ["owner_director"] },
+  { href: "/email-triage",   label: "Email Triage AI",  roles: ["owner_director", "operations_admin"] },
 ];
 
 // Visual groupings with section labels
 const NAV_GROUPS: { label?: string; hrefs: string[] }[] = [
   { hrefs: ["/dashboard"] },
-  { label: "People",  hrefs: ["/members", "/tasks", "/leads", "/retention", "/trial-funnel"] },
-  { label: "Comms",   hrefs: ["/email-review", "/cancellations", "/communications"] },
-  { label: "Finance", hrefs: ["/invoices", "/financial", "/subscriptions", "/expenses", "/payments"] },
-  { label: "Ops",     hrefs: ["/match-queue", "/sync", "/actions-queue", "/compliance", "/audit"] },
+  { label: "People",  hrefs: ["/members", "/tasks", "/timetable", "/attendance", "/grading", "/leads", "/retention", "/trial-funnel"] },
+  { label: "Comms",   hrefs: ["/email-review", "/cancellations", "/communications", "/campaigns"] },
+  { label: "Finance", hrefs: ["/invoices", "/financial", "/subscriptions", "/expenses", "/payments", "/bank-feed"] },
+  { label: "Ops",     hrefs: ["/match-queue", "/sync", "/actions-queue", "/hours", "/payroll", "/compliance", "/audit"] },
+  { label: "Shop",    hrefs: ["/merch"] },
+  { label: "AI",      hrefs: ["/advisor", "/email-triage", "/settings"] },
 ];
 
 // ── Sidebar content (shared between desktop + mobile) ─────────────────────────
@@ -114,7 +134,7 @@ function SidebarContent({
           className="text-sm font-semibold tracking-tight text-white hover:text-red-400 transition-colors"
           onClick={onNavClick}
         >
-          Command Centre
+          Bendigo Fight Centre
         </Link>
       </div>
 
@@ -227,33 +247,26 @@ export function AppShell({
       </aside>
 
       {/* ── Main ─────────────────────────────────────────────────────────── */}
+      {/* ── Main ─────────────────────────────────────────────────────────── */}
       <div className="flex min-w-0 flex-1 flex-col lg:pl-60">
-        {/* Mobile top bar (hamburger only) */}
-        <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-zinc-950 border-zinc-800 px-4 lg:hidden">
+        {/* Mobile top bar */}
+        <header className="flex h-14 shrink-0 items-center border-b bg-background px-4 lg:hidden">
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
-            className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors"
-            aria-label="Open navigation"
+            className="mr-3 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+            aria-label="Open sidebar"
           >
-            <svg
-              viewBox="0 0 24 24"
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              strokeLinecap="round"
-            >
-              <path d="M4 6h16M4 12h16M4 18h16" />
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+              <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </button>
-          <div className="flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded bg-red-600 text-white font-black text-[10px] leading-none">BFC</div>
-            <span className="text-sm font-semibold text-white">Command Centre</span>
-          </div>
+          <span className="text-sm font-semibold">Bendigo Fight Centre</span>
         </header>
 
-        <main className="flex-1 p-6">{children}</main>
+        <main className="flex-1 overflow-y-auto p-6">
+          {children}
+        </main>
       </div>
     </div>
   );

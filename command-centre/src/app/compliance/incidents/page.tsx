@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { formatDate, formatDateTime, isoToday } from "@/lib/format";
 import { createIncident, updateIncident } from "./actions";
 
-export const metadata = { title: "Incidents — BFC Command Centre" };
+export const metadata = { title: "Incidents — Bendigo Fight Centre" };
 
 const SEVERITY_VARIANT: Record<string, "outline" | "secondary" | "warning" | "destructive"> = {
   low: "outline",

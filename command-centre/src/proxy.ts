@@ -37,8 +37,11 @@ export async function proxy(request: NextRequest) {
   // Token-gated public forms (guardian/member medical + onboarding). The
   // token itself is the credential; the RPCs validate expiry and single use.
   const isPublicForm = request.nextUrl.pathname.startsWith("/forms/");
+  // Member portal has its own session — bypass admin auth entirely.
+  const isPortalRoute = request.nextUrl.pathname.startsWith("/portal");
 
   if (isPublicForm) return response;
+  if (isPortalRoute) return response;
 
   if (!user && !isAuthRoute) {
     const url = request.nextUrl.clone();
@@ -66,7 +69,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Everything except static assets and images.
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

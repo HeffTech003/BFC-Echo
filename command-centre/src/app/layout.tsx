@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BFC Command Centre",
+  title: "Bendigo Fight Centre",
   description: "Bendigo Fight Centre operational intelligence platform",
 };
 

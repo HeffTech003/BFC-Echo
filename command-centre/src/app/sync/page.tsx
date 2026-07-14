@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/table";
 import { formatDateTime, sourceLabel } from "@/lib/format";
 
-export const metadata = { title: "Sync Status — BFC Command Centre" };
+export const metadata = { title: "Sync Status — Bendigo Fight Centre" };
 
 const SOURCES = ["clubworx", "gocardless", "xero", "woocommerce", "square"];
 

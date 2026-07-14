@@ -1,5 +1,6 @@
 // app/subscriptions/page.tsx
-// GoCardless recurring mandates — who has an active direct debit set up.
+// GoCardless recurring billing — who has an active direct debit set up.
+// Data source: memberships table (billing_provider = 'gocardless'), synced by WF16.
 import Link from "next/link";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -14,47 +15,38 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-export const metadata = { title: "Subscriptions — BFC Command Centre" };
+export const metadata = { title: "Subscriptions — Bendigo Fight Centre" };
 
 const STATUS_COLOURS: Record<string, string> = {
-  active:              "bg-success/15 text-success-foreground",
-  pending_submission:  "bg-primary/15 text-primary",
-  pending_customer_approval: "bg-primary/15 text-primary",
-  submitted:           "bg-primary/15 text-primary",
-  failed:              "bg-destructive/15 text-destructive",
-  cancelled:           "bg-muted text-muted-foreground",
-  expired:             "bg-muted text-muted-foreground",
-  consumed:            "bg-muted text-muted-foreground",
-  reinstated:          "bg-success/15 text-success-foreground",
+  active:    "bg-success/15 text-success-foreground",
+  paused:    "bg-warning/15 text-warning-foreground",
+  cancelled: "bg-muted text-muted-foreground",
+  expired:   "bg-muted text-muted-foreground",
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  active:              "Active",
-  pending_submission:  "Pending",
-  pending_customer_approval: "Pending approval",
-  submitted:           "Submitted",
-  failed:              "Failed",
-  cancelled:           "Cancelled",
-  expired:             "Expired",
-  consumed:            "Consumed",
-  reinstated:          "Reinstated",
+  active:    "Active",
+  paused:    "Paused",
+  cancelled: "Cancelled",
+  expired:   "Expired",
 };
 
 export default async function SubscriptionsPage() {
   const profile = await requireRole(["owner_director", "operations_admin", "finance"]);
   const supabase = await createClient();
 
-  // Fetch mandates with linked member name
-  const { data: mandates } = await supabase
-    .from("gocardless_mandates")
-    .select("id, gc_mandate_id, status, scheme, created_at, member_id, member:members(id, full_name, primary_email)")
+  // GoCardless billing lives in the memberships table per sync-contracts.md
+  const { data: memberships } = await supabase
+    .from("memberships")
+    .select("id, source_record_id, status, plan_name, amount, billing_interval, start_date, created_at, member_id, member:members(id, full_name, primary_email)")
+    .eq("billing_provider", "gocardless")
     .order("created_at", { ascending: false })
     .limit(500);
 
-  const rows = mandates ?? [];
+  const rows = memberships ?? [];
 
   // Status breakdown counts
   const counts: Record<string, number> = {};
@@ -64,9 +56,9 @@ export default async function SubscriptionsPage() {
   }
 
   const activeCount    = counts["active"] ?? 0;
-  const pendingCount   = (counts["pending_submission"] ?? 0) + (counts["submitted"] ?? 0) + (counts["pending_customer_approval"] ?? 0);
-  const failedCount    = counts["failed"] ?? 0;
-  const cancelledCount = (counts["cancelled"] ?? 0) + (counts["expired"] ?? 0) + (counts["consumed"] ?? 0);
+  const pausedCount    = counts["paused"] ?? 0;
+  const cancelledCount = (counts["cancelled"] ?? 0) + (counts["expired"] ?? 0);
+  const failedCount    = 0; // tracked in payment_events, not memberships
 
   return (
     <AppShell profile={profile}>
@@ -86,90 +78,39 @@ export default async function SubscriptionsPage() {
         </Card>
         <Card className="py-4 gap-1">
           <CardContent className="px-4">
-            <div className="text-2xl font-semibold tabular-nums text-primary">{pendingCount}</div>
-            <div className="text-sm font-medium mt-0.5">Pending</div>
-            <div className="text-xs text-muted-foreground">awaiting activation</div>
+            <div className="text-2xl font-semibold tabular-nums text-warning-foreground">{pausedCount}</div>
+            <div className="text-sm font-medium mt-0.5">Paused</div>
+            <div className="text-xs text-muted-foreground">billing suspended</div>
           </CardContent>
         </Card>
         <Card className="py-4 gap-1">
           <CardContent className="px-4">
-            <div className={cn("text-2xl font-semibold tabular-nums", failedCount > 0 ? "text-destructive" : "text-foreground")}>{failedCount}</div>
+            <div className="text-2xl font-semibold tabular-nums text-muted-foreground">{failedCount}</div>
             <div className="text-sm font-medium mt-0.5">Failed</div>
-            <div className="text-xs text-muted-foreground">need attention</div>
+            <div className="text-xs text-muted-foreground">see Payments page</div>
           </CardContent>
         </Card>
         <Card className="py-4 gap-1">
           <CardContent className="px-4">
             <div className="text-2xl font-semibold tabular-nums text-muted-foreground">{cancelledCount}</div>
             <div className="text-sm font-medium mt-0.5">Cancelled</div>
-            <div className="text-xs text-muted-foreground">inactive mandates</div>
+            <div className="text-xs text-muted-foreground">inactive subscriptions</div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Failed mandates — highlighted first */}
-      {failedCount > 0 && (
-        <Card className="mb-6 border-destructive/30">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              Failed mandates
-              <Badge className="bg-destructive/15 text-destructive font-normal text-xs">{failedCount}</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Member</TableHead>
-                  <TableHead>Mandate ID</TableHead>
-                  <TableHead>Scheme</TableHead>
-                  <TableHead>Created</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows
-                  .filter(m => m.status === "failed")
-                  .map(m => {
-                    const member = Array.isArray(m.member) ? m.member[0] : m.member;
-                    return (
-                      <TableRow key={m.id}>
-                        <TableCell className="font-medium">
-                          {member ? (
-                            <Link href={`/members/${member.id}`} className="hover:underline">
-                              {member.full_name ?? "Unknown"}
-                            </Link>
-                          ) : (
-                            <span className="text-muted-foreground">Unlinked</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="font-mono text-xs text-muted-foreground">
-                          {m.gc_mandate_id}
-                        </TableCell>
-                        <TableCell className="text-sm uppercase">{m.scheme ?? "—"}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {m.created_at ? formatDate(m.created_at) : "—"}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* All mandates */}
+      {/* All GoCardless subscriptions */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
-            All mandates
+            GoCardless subscriptions
             <Badge variant="secondary" className="font-normal text-xs">{rows.length}</Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {rows.length === 0 ? (
             <p className="px-6 py-4 text-sm text-muted-foreground">
-              No GoCardless mandates synced yet. Check that WF16 is active in n8n.
+              No GoCardless subscriptions synced yet. Check that WF16 is active in n8n and writing to the memberships table.
             </p>
           ) : (
             <div className="overflow-x-auto">
@@ -178,10 +119,11 @@ export default async function SubscriptionsPage() {
                   <TableRow>
                     <TableHead>Member</TableHead>
                     <TableHead>Email</TableHead>
+                    <TableHead>Plan</TableHead>
+                    <TableHead>Amount</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Scheme</TableHead>
-                    <TableHead>Mandate ID</TableHead>
-                    <TableHead>Created</TableHead>
+                    <TableHead>Source ID</TableHead>
+                    <TableHead>Start</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -204,6 +146,10 @@ export default async function SubscriptionsPage() {
                         <TableCell className="text-sm text-muted-foreground">
                           {member?.primary_email ?? "—"}
                         </TableCell>
+                        <TableCell className="text-sm">{m.plan_name ?? "—"}</TableCell>
+                        <TableCell className="text-sm tabular-nums">
+                          {m.amount ? `${formatMoney(m.amount)}/${m.billing_interval ?? "mo"}` : "—"}
+                        </TableCell>
                         <TableCell>
                           <Badge
                             variant="secondary"
@@ -212,12 +158,11 @@ export default async function SubscriptionsPage() {
                             {STATUS_LABEL[m.status ?? ""] ?? m.status ?? "—"}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-sm uppercase">{m.scheme ?? "—"}</TableCell>
                         <TableCell className="font-mono text-xs text-muted-foreground">
-                          {m.gc_mandate_id}
+                          {m.source_record_id ?? "—"}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {m.created_at ? formatDate(m.created_at) : "—"}
+                          {m.start_date ? formatDate(m.start_date) : m.created_at ? formatDate(m.created_at) : "—"}
                         </TableCell>
                       </TableRow>
                     );
@@ -230,7 +175,7 @@ export default async function SubscriptionsPage() {
       </Card>
 
       <p className="mt-3 text-xs text-muted-foreground">
-        Data synced from GoCardless via n8n WF16.{" "}
+        Data synced from GoCardless via n8n WF16 into the memberships table.{" "}
         <Link href="/sync" className="text-primary hover:underline">Sync status →</Link>
       </p>
     </AppShell>

@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/table";
 import { formatDate, formatMoney, isoDaysAgo } from "@/lib/format";
 
-export const metadata = { title: "Financial — BFC Command Centre" };
+export const metadata = { title: "Financial — Bendigo Fight Centre" };
 
 /** Australian FY starts July 1 */
 function auFyStart(): string {
@@ -88,12 +88,14 @@ export default async function FinancialPage() {
   );
   const revenueOutstandingCount = accrec.filter((i) => i.status === "AUTHORISED").length;
 
-  // Expenses (bills)
+  // Expenses (bills) — includes PAID + AUTHORISED (bills entered in Xero, whether or
+  // not Xero bank reconciliation has been done). This gives a full committed-expense view.
+  // PAID bills = cash actually transferred; AUTHORISED = approved but not yet reconciled in Xero.
   const expensesYtd = sumTotal(
-    accpay.filter((i) => i.status === "PAID" && (i.date ?? "") >= fyStart)
+    accpay.filter((i) => ["PAID", "AUTHORISED"].includes(i.status) && (i.date ?? "") >= fyStart)
   );
   const expensesRolling12 = sumTotal(
-    accpay.filter((i) => i.status === "PAID" && (i.date ?? "") >= rolling12Start)
+    accpay.filter((i) => ["PAID", "AUTHORISED"].includes(i.status) && (i.date ?? "") >= rolling12Start)
   );
   const expensesOutstanding = sumAmountDue(
     accpay.filter((i) => i.status === "AUTHORISED")
@@ -157,7 +159,7 @@ export default async function FinancialPage() {
             </div>
             <div className="mt-0.5 text-sm font-medium">Expenses (12 mo)</div>
             <div className="text-muted-foreground mt-0.5 text-xs">
-              {fyLabel}: {formatMoney(expensesYtd)}
+              {fyLabel}: {formatMoney(expensesYtd)} · paid + committed
             </div>
           </CardContent>
         </Card>
@@ -344,13 +346,6 @@ export default async function FinancialPage() {
           </Table>
         </div>
       )}
-
-      <p className="text-muted-foreground mt-6 text-xs">
-        Data sourced from Xero via WF18. Syncs daily at 3am.{" "}
-        <Link href="/sync" className="text-primary hover:underline">
-          View sync logs →
-        </Link>
-      </p>
     </AppShell>
   );
 }

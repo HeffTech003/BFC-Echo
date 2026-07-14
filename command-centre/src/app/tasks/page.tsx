@@ -23,7 +23,7 @@ import {
 import { formatDate, isoToday } from "@/lib/format";
 import { createTask, updateTaskStatus } from "./actions";
 
-export const metadata = { title: "Tasks — BFC Command Centre" };
+export const metadata = { title: "Tasks — Bendigo Fight Centre" };
 
 const PRIORITY_VARIANT: Record<string, "destructive" | "warning" | "secondary" | "outline"> = {
   urgent: "destructive",

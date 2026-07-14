@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/table";
 import { formatDateTime } from "@/lib/format";
 
-export const metadata = { title: "Audit Log — BFC Command Centre" };
+export const metadata = { title: "Audit Log — Bendigo Fight Centre" };
 
 export default async function AuditPage({
   searchParams,

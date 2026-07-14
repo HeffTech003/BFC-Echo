@@ -21,7 +21,7 @@ import {
   runMatcher,
 } from "./actions";
 
-export const metadata = { title: "Match Queue — BFC Command Centre" };
+export const metadata = { title: "Match Queue — Bendigo Fight Centre" };
 
 export default async function MatchQueuePage() {
   const profile = await requireRole(["owner_director", "operations_admin"]);

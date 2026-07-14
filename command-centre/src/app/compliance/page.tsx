@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table";
 import { formatDate, isoDaysAgo, isoToday } from "@/lib/format";
 
-export const metadata = { title: "Compliance — BFC Command Centre" };
+export const metadata = { title: "Compliance — Bendigo Fight Centre" };
 
 export default async function CompliancePage() {
   const profile = await requireRole([
@@ -170,6 +170,48 @@ export default async function CompliancePage() {
     incompleteYouth = youthMembers.filter((m) => !onboarded.has(m.id));
   }
 
+  // Coach certifications (all staff members + their cert records)
+  const staffRes = await supabase
+    .from("members")
+    .select("id, full_name")
+    .eq("member_type", "staff")
+    .eq("member_status", "active")
+    .is("merged_into", null)
+    .order("full_name");
+  const certsRes = await supabase
+    .from("coach_certifications")
+    .select("id, member_id, cert_type, cert_number, expires_at, status");
+  const staffMembers = staffRes.data ?? [];
+  const allCerts = certsRes.data ?? [];
+  const CERT_TYPES = ["wwcc", "first_aid", "police_check"] as const;
+  type CertType = typeof CERT_TYPES[number];
+  const CERT_LABELS: Record<CertType, string> = {
+    wwcc:         "WWCC",
+    first_aid:    "First Aid",
+    police_check: "Police Check",
+  };
+  // Build a map: member_id → cert_type → cert record
+  const certMap = new Map<string, Map<CertType, typeof allCerts[number]>>();
+  for (const c of allCerts) {
+    if (!CERT_TYPES.includes(c.cert_type as CertType)) continue;
+    if (!certMap.has(c.member_id)) certMap.set(c.member_id, new Map());
+    certMap.get(c.member_id)!.set(c.cert_type as CertType, c);
+  }
+  const todayStr = today;
+  const soon60 = soon; // isoDaysAgo(-60) already computed above
+
+  function certBadge(cert: typeof allCerts[number] | undefined): React.ReactNode {
+    if (!cert) return <Badge variant="outline" className="text-xs">missing</Badge>;
+    if (cert.status === "not_required") return <Badge variant="secondary" className="text-xs">N/A</Badge>;
+    if (cert.status === "expired" || (cert.expires_at && cert.expires_at < todayStr))
+      return <Badge variant="destructive" className="text-xs">expired {cert.expires_at ?? ""}</Badge>;
+    if (cert.expires_at && cert.expires_at < soon60)
+      return <Badge variant="warning" className="text-xs">expiring {cert.expires_at}</Badge>;
+    if (cert.status === "current")
+      return <Badge variant="success" className="text-xs">current {cert.expires_at ? `· ${cert.expires_at}` : ""}</Badge>;
+    return <Badge variant="outline" className="text-xs">pending</Badge>;
+  }
+
   return (
     <AppShell profile={profile}>
       <h1 className="mb-1 text-2xl font-semibold">Compliance & Safety</h1>
@@ -178,7 +220,17 @@ export default async function CompliancePage() {
         Child Safety Lead; every access is audit-logged.
       </p>
 
-      <div className="mb-8 grid gap-4 md:grid-cols-3">
+      <div className="mb-8 grid gap-4 md:grid-cols-3 lg:grid-cols-4">
+        <Link href="/compliance/coaches">
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle className="text-base">Coach Certifications</CardTitle>
+              <CardDescription>
+                WWCC · First Aid · Police Check — {staffMembers.length} coaches
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
         <Link href="/compliance/policies">
           <Card className="h-full">
             <CardHeader>
@@ -287,6 +339,38 @@ export default async function CompliancePage() {
             </ul>
           )}
         </>
+      )}
+
+      <h2 className="mb-2 font-medium">Coach certifications</h2>
+      {staffMembers.length === 0 ? (
+        <p className="text-muted-foreground mb-8 text-sm">No active staff members found. Staff must have member_type = &apos;staff&apos; in the members table.</p>
+      ) : (
+        <div className="mb-8 overflow-x-auto rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Coach</TableHead>
+                {CERT_TYPES.map((t) => (
+                  <TableHead key={t}>{CERT_LABELS[t]}</TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {staffMembers.map((m) => (
+                <TableRow key={m.id}>
+                  <TableCell className="font-medium">
+                    <a href={`/members/${m.id}`} className="text-primary underline-offset-4 hover:underline">
+                      {m.full_name}
+                    </a>
+                  </TableCell>
+                  {CERT_TYPES.map((t) => (
+                    <TableCell key={t}>{certBadge(certMap.get(m.id)?.get(t))}</TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
 
       <p className="text-muted-foreground mt-4 max-w-2xl text-xs">

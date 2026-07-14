@@ -33,6 +33,7 @@ import {
 import { formatDate, formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { PortalSignOut } from "@/components/portal-sign-out";
+import StripePortalButton from "./stripe-portal-button";
 
 const STATUS_COLOURS: Record<string, string> = {
   active:    "bg-success/15 text-success-foreground",
@@ -76,7 +77,7 @@ export default async function PortalPage() {
   }
 
   // Parallel data fetch (RLS ensures member sees only their own rows)
-  const [membershipsRes, paymentEventsRes, xeroContactRes] = await Promise.all([
+  const [membershipsRes, paymentEventsRes, xeroContactRes, bookingsRes, gradingsRes, merchOrdersRes] = await Promise.all([
     supabase
       .from("memberships")
       .select("id, plan_name, billing_provider, status, start_date, end_date")
@@ -96,11 +97,33 @@ export default async function PortalPage() {
       .select("xero_contact_id")
       .eq("member_id", member.id)
       .single(),
+    supabase
+      .from("class_bookings")
+      .select("id, class_template_id, booked_date, status, class:class_templates(name, start_time, duration_minutes)")
+      .eq("member_id", member.id)
+      .gte("booked_date", new Date().toISOString().slice(0, 10))
+      .order("booked_date")
+      .limit(10),
+    supabase
+      .from("member_gradings")
+      .select("id, discipline, grade, graded_at")
+      .eq("member_id", member.id)
+      .order("graded_at", { ascending: false })
+      .limit(20),
+    supabase
+      .from("merch_orders")
+      .select("id, status, total_cents, created_at, merch_order_items(qty, price_cents, products(name))")
+      .eq("member_id", member.id)
+      .order("created_at", { ascending: false })
+      .limit(5),
   ]);
 
   const memberships     = membershipsRes.data     ?? [];
   const paymentEvents   = paymentEventsRes.data   ?? [];
   const xeroContactId   = xeroContactRes.data?.xero_contact_id;
+  const upcomingBookings = bookingsRes.data ?? [];
+  const memberGradings   = gradingsRes.data ?? [];
+  const merchOrders      = (merchOrdersRes?.data ?? []) as unknown as { id: string; status: string; total_cents: number; created_at: string; merch_order_items: { qty: number; price_cents: number; products: { name: string } | null }[] }[];
 
   // Xero invoices for this member
   let xeroInvoices: {
@@ -283,6 +306,57 @@ export default async function PortalPage() {
           </CardContent>
         </Card>
 
+        {/* Upcoming class bookings */}
+        {upcomingBookings.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Upcoming class bookings</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="divide-y">
+                {upcomingBookings.map(b => {
+                  const cls = Array.isArray(b.class) ? b.class[0] : b.class;
+                  return (
+                    <div key={b.id} className="flex items-center justify-between py-3">
+                      <div>
+                        <p className="font-medium text-sm">{cls?.name ?? "Class"}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatDate(b.booked_date)} · {cls?.start_time?.slice(0,5)} · {cls?.duration_minutes}min
+                        </p>
+                      </div>
+                      <Badge variant={b.status === "confirmed" ? "success" : "secondary"} className="text-xs">
+                        {b.status}
+                      </Badge>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Grading history */}
+        {memberGradings.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">My gradings</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="divide-y">
+                {memberGradings.map(g => (
+                  <div key={g.id} className="flex items-center justify-between py-3">
+                    <div>
+                      <p className="font-medium text-sm capitalize">{g.discipline?.replace("_"," ")} — {g.grade}</p>
+                      <p className="text-xs text-muted-foreground">{formatDate(g.graded_at)}</p>
+                    </div>
+                    <Badge variant="secondary" className="text-xs">{g.grade}</Badge>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Help */}
         <Card className="bg-muted/30 border-dashed">
           <CardContent className="py-4 text-center">
@@ -293,8 +367,53 @@ export default async function PortalPage() {
               </a>{" "}
               or call us at the gym.
             </p>
+
+            {/* Stripe customer portal */}
+            {memberships.some((m) => m.billing_provider === "stripe") && (
+              <StripePortalButton />
+            )}
+
+            {/* Quick links */}
+            <div className="grid grid-cols-2 gap-2 pt-2">
+              <a href="/merch" className="rounded-lg border p-3 text-center text-sm font-medium hover:bg-muted">
+                🛍️ Shop Merch
+              </a>
+              <a href="/timetable/book" className="rounded-lg border p-3 text-center text-sm font-medium hover:bg-muted">
+                📅 Book a Class
+              </a>
+            </div>
           </CardContent>
         </Card>
+
+        {/* Merch orders */}
+        {merchOrders.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">My Orders</CardTitle>
+            </CardHeader>
+            <CardContent className="divide-y">
+              {merchOrders.map((order) => (
+                <div key={order.id} className="py-3 space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="font-medium">{new Date(order.created_at).toLocaleDateString("en-AU")}</span>
+                    <span className="font-bold">${(order.total_cents / 100).toFixed(2)}</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground space-y-0.5">
+                    {order.merch_order_items.map((item, i) => (
+                      <div key={i}>{item.qty}x {item.products?.name ?? "Item"}</div>
+                    ))}
+                  </div>
+                  <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
+                    order.status === "fulfilled" ? "bg-green-100 text-green-700" :
+                    order.status === "paid" ? "bg-blue-100 text-blue-700" :
+                    order.status === "cancelled" ? "bg-gray-100 text-gray-500" :
+                    "bg-yellow-100 text-yellow-700"
+                  }`}>{order.status}</span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
       </main>
     </div>
   );

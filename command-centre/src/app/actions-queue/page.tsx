@@ -18,7 +18,7 @@ import { formatDateTime, sourceLabel } from "@/lib/format";
 import { ACTION_TYPES } from "@/lib/action-types";
 import { decideAction, requestAction, retryAction } from "./actions";
 
-export const metadata = { title: "Actions — BFC Command Centre" };
+export const metadata = { title: "Actions — Bendigo Fight Centre" };
 
 export default async function ActionsQueuePage() {
   const profile = await requireRole(["owner_director", "operations_admin", "finance"]);

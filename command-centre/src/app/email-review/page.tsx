@@ -14,7 +14,7 @@ import {
 import { formatDateTime } from "@/lib/format";
 import { decideEmail } from "./actions";
 
-export const metadata = { title: "Email Review — BFC Command Centre" };
+export const metadata = { title: "Email Review — Bendigo Fight Centre" };
 
 export default async function EmailReviewPage() {
   const profile = await requireRole(["owner_director", "operations_admin"]);

@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { formatMoney, isoDaysAgo, isoToday } from "@/lib/format";
 import type { Role } from "@/lib/roles";
 
-export const metadata = { title: "Dashboard — BFC Command Centre" };
+export const metadata = { title: "Dashboard — Bendigo Fight Centre" };
 
 type Rag = "green" | "amber" | "red" | "neutral";
 
@@ -555,6 +555,32 @@ export default async function DashboardPage({
           </div>
         </>
       )}
+
+        {/* ── New Platform Features ────────────────────────────────────────── */}
+        <div>
+          <h2 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide">Platform Tools</h2>
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+            {[
+              { href: "/advisor",        label: "AI Advisor",      icon: "💡", desc: "Ask anything about BFC" },
+              { href: "/email-triage",   label: "Email Triage",    icon: "📬", desc: "AI email classification" },
+              { href: "/campaigns",      label: "Campaigns",       icon: "📣", desc: "Bulk email & SMS" },
+              { href: "/bank-feed",      label: "Bank Feed",       icon: "🏦", desc: "Live Xero transactions" },
+              { href: "/merch",          label: "Merch Shop",      icon: "🛍️", desc: "Products & orders" },
+              { href: "/timetable/book", label: "Book a Class",    icon: "📅", desc: "Class booking portal" },
+            ].map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="rounded-xl border bg-card p-3 hover:bg-muted/50 transition-colors"
+              >
+                <div className="text-xl mb-1">{item.icon}</div>
+                <div className="text-sm font-medium">{item.label}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">{item.desc}</div>
+              </Link>
+            ))}
+          </div>
+        </div>
+
     </AppShell>
   );
 }
