@@ -39,12 +39,10 @@ type Member = {
 type SourceRecord = {
   id: string;
   source_system: string;
-  external_id: string | null;
+  source_record_id: string | null;
   match_status: string;
-  first_name: string | null;
-  last_name: string | null;
+  display_name: string | null;
   email: string | null;
-  phone: string | null;
   raw_data: Record<string, unknown> | null;
 };
 
@@ -88,7 +86,6 @@ type Task = {
   priority: string | null;
   due_date: string | null;
   created_at: string;
-  notes: string | null;
   assigned_to: string | null;
 };
 
@@ -106,11 +103,10 @@ type Relationship = {
 type CancellationRequest = {
   id: string;
   status: string;
-  reason_category: string | null;
-  lock_in: boolean | null;
+  reason: string | null;
+  comments: string | null;
   created_at: string;
-  notes: string | null;
-  requested_end_date: string | null;
+  preferred_last_date: string | null;
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -253,7 +249,7 @@ export default async function MemberProfilePage({
 
     supabase
       .from("member_source_records")
-      .select("id, source_system, external_id, match_status, first_name, last_name, email, phone, raw_data")
+      .select("id, source_system, source_record_id, match_status, display_name, email, raw_data")
       .eq("member_id", id)
       .order("source_system"),
 
@@ -272,14 +268,14 @@ export default async function MemberProfilePage({
 
     supabase
       .from("tasks")
-      .select("id, title, status, priority, due_date, created_at, notes, assigned_to")
-      .eq("member_id", id)
+      .select("id, title, status, priority, due_date, created_at, assigned_to")
+      .eq("related_member_id", id)
       .order("created_at", { ascending: false })
       .limit(20),
 
     supabase
       .from("cancellation_requests")
-      .select("id, status, reason_category, lock_in, created_at, notes, requested_end_date")
+      .select("id, status, reason, comments, created_at, preferred_last_date")
       .eq("member_id", id)
       .order("created_at", { ascending: false }),
 
@@ -349,7 +345,7 @@ export default async function MemberProfilePage({
   const isNac       = member.member_type === "nac";
 
   const gcSourceRecord = sourceRecords.find(r => r.source_system === "gocardless");
-  const gcCustomerId   = gcSourceRecord?.external_id;
+  const gcCustomerId   = gcSourceRecord?.source_record_id;
 
   const totalPaid = xeroInvoices
     .filter(i => i.status === "PAID")
@@ -509,7 +505,7 @@ export default async function MemberProfilePage({
             <p className="text-sm text-muted-foreground">
               No guardian info found in Clubworx source record.
               {nacRecord && (
-                <span className="ml-1 text-xs">Clubworx ID: <code>{nacRecord.external_id}</code></span>
+                <span className="ml-1 text-xs">Clubworx ID: <code>{nacRecord.source_record_id}</code></span>
               )}
             </p>
           )}
@@ -552,7 +548,7 @@ export default async function MemberProfilePage({
           {sourceRecords.map((r) => (
             <div key={r.id} className="text-muted-foreground">
               <span className="font-medium">{SOURCE_LABEL(r.source_system)}</span>
-              {r.external_id && <span className="ml-1 font-mono">{r.external_id}</span>}
+              {r.source_record_id && <span className="ml-1 font-mono">{r.source_record_id}</span>}
             </div>
           ))}
         </div>
@@ -698,9 +694,6 @@ export default async function MemberProfilePage({
                         <Link href={`/tasks/${t.id}`} className="font-medium hover:underline">
                           {t.title}
                         </Link>
-                        {t.notes && (
-                          <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">{t.notes}</p>
-                        )}
                       </TableCell>
                       <TableCell><Pill value={t.status} /></TableCell>
                       <TableCell className="capitalize text-sm">{t.priority ?? "—"}</TableCell>
@@ -739,8 +732,7 @@ export default async function MemberProfilePage({
                     <TableHead>Date</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Reason</TableHead>
-                    <TableHead>Lock-in</TableHead>
-                    <TableHead>Requested end</TableHead>
+                    <TableHead>Preferred end</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -748,18 +740,9 @@ export default async function MemberProfilePage({
                     <TableRow key={c.id}>
                       <TableCell className="text-sm">{formatDate(c.created_at)}</TableCell>
                       <TableCell><Pill value={c.status} /></TableCell>
-                      <TableCell className="text-sm">{c.reason_category ?? "—"}</TableCell>
-                      <TableCell>
-                        {c.lock_in ? (
-                          <Badge variant="secondary" className="bg-destructive/15 text-destructive text-xs">
-                            Yes
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">No</span>
-                        )}
-                      </TableCell>
+                      <TableCell className="text-sm">{c.reason ?? "—"}</TableCell>
                       <TableCell className="text-sm">
-                        {c.requested_end_date ? formatDate(c.requested_end_date) : "—"}
+                        {c.preferred_last_date ? formatDate(c.preferred_last_date) : "—"}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -767,12 +750,12 @@ export default async function MemberProfilePage({
               </Table>
             </div>
           )}
-          {cancellations.some(c => c.notes) && (
+          {cancellations.some(c => c.comments) && (
             <div className="mt-3 border-t pt-3 space-y-2">
-              {cancellations.filter(c => c.notes).map(c => (
+              {cancellations.filter(c => c.comments).map(c => (
                 <div key={c.id} className="text-sm">
                   <span className="text-muted-foreground text-xs">{formatDate(c.created_at)}: </span>
-                  {c.notes}
+                  {c.comments}
                 </div>
               ))}
             </div>
@@ -794,14 +777,13 @@ export default async function MemberProfilePage({
                     <Pill value={r.match_status} />
                   </div>
                   <div className="mt-1 space-y-0.5 text-muted-foreground text-xs">
-                    {r.external_id && (
-                      <div>ID: <code className="text-foreground">{r.external_id}</code></div>
+                    {r.source_record_id && (
+                      <div>ID: <code className="text-foreground">{r.source_record_id}</code></div>
                     )}
-                    {(r.first_name || r.last_name) && (
-                      <div>Name: {[r.first_name, r.last_name].filter(Boolean).join(" ")}</div>
+                    {r.display_name && (
+                      <div>Name: {r.display_name}</div>
                     )}
                     {r.email && r.email !== member.primary_email && <div>Email: {r.email}</div>}
-                    {r.phone && r.phone !== member.primary_phone && <div>Phone: {r.phone}</div>}
                   </div>
                 </div>
               ))
@@ -812,3 +794,4 @@ export default async function MemberProfilePage({
     </AppShell>
   );
 }
+                                                                                              
