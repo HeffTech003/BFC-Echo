@@ -1,4 +1,5 @@
 import { signIn } from "./actions";
+import { LoginAuthHandler } from "./login-auth-handler";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,6 +22,7 @@ export default async function LoginPage({
 
   return (
     <main className="flex min-h-svh items-center justify-center p-6">
+      <LoginAuthHandler />
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle className="text-xl">Bendigo Fight Centre</CardTitle>
