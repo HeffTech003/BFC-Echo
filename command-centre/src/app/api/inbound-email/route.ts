@@ -110,18 +110,18 @@ Priority: high = injury/complaint/legal/cancellation/billing; medium = new lead/
   // ── Auto-actions ────────────────────────────────────────────────────────────
   // Create CRM lead for lead/trial_class_request
   if (triage && ["lead", "trial_class_request"].includes(triage.category)) {
-    await supabase.from("crm_leads").insert({
+    await supabase.from("leads").insert({
       full_name:   from.split("@")[0].replace(/[._]/g, " "),
       email:       from,
       source:      "email_inbound",
-      status:      "new",
+      stage:       "new_enquiry",
       notes:       `Auto-created from email: ${subject}\n\n${triage.summary}`,
     }).single();
   }
 
   // Create task for cancellation/billing/injury
   if (triage && ["cancellation_request", "billing_dispute", "injury_complaint"].includes(triage.category)) {
-    await supabase.from("staff_tasks").insert({
+    await supabase.from("tasks").insert({
       title:       `[${triage.category.replace(/_/g, " ")}] Email from ${from}`,
       description: `${triage.summary}\n\nSuggested reply drafted — check email triage log.\n\nCRM action: ${triage.crmAction}`,
       priority:    triage.priority === "high" ? "urgent" : "normal",

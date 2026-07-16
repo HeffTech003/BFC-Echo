@@ -42,8 +42,8 @@ export async function POST(req: NextRequest) {
   if (mode === "new_lead" && lead_id) {
     // Create a task for Kaleb to follow up
     const { data: lead } = await supabase
-      .from("crm_leads")
-      .select("id, full_name, email, phone, source, status, notes")
+      .from("leads")
+      .select("id, full_name, email, phone, source, stage, notes")
       .eq("id", lead_id)
       .single();
 
@@ -52,10 +52,10 @@ export async function POST(req: NextRequest) {
     const dueDate = new Date(Date.now() + 24 * 3600000).toISOString();
 
     if (!dry_run) {
-      await supabase.from("staff_tasks").insert({
+      await supabase.from("tasks").insert({
         title:       `Follow up: ${lead.full_name} (${lead.source ?? "website"})`,
         description: `New lead needs follow-up within 24 hours.\n\nContact: ${lead.email ?? lead.phone ?? "no contact info"}\n\nNotes: ${lead.notes ?? "none"}`,
-        priority:    lead.status === "qualified" ? "urgent" : "normal",
+        priority:    lead.stage === "follow_up_required" ? "urgent" : "normal",
         status:      "open",
         due_date:    dueDate,
       });
@@ -80,9 +80,9 @@ export async function POST(req: NextRequest) {
     // Find leads with no update in cold_threshold_days
     const cutoff = new Date(Date.now() - cold_threshold_days * 864e5).toISOString();
     const { data: coldLeads } = await supabase
-      .from("crm_leads")
+      .from("leads")
       .select("id, full_name, email, phone, source, created_at")
-      .in("status", ["new", "contacted"])
+      .in("stage", ["new_enquiry", "trial_booked", "follow_up_required"])
       .lte("updated_at", cutoff)
       .limit(50);
 
@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Create tasks for each cold lead
-    await supabase.from("staff_tasks").insert(
+    await supabase.from("tasks").insert(
       coldLeads.map((lead) => ({
         title:       `Cold lead follow-up: ${lead.full_name}`,
         description: `This lead has been inactive for ${cold_threshold_days}+ days.\n\nContact: ${lead.email ?? lead.phone ?? "no contact info"}\nSource: ${lead.source ?? "unknown"}\nCreated: ${new Date(lead.created_at).toLocaleDateString("en-AU")}`,
@@ -102,9 +102,9 @@ export async function POST(req: NextRequest) {
       }))
     );
 
-    // Update lead status to show we've attempted contact
-    await supabase.from("crm_leads")
-      .update({ status: "contacted", updated_at: new Date().toISOString() })
+    // Update lead stage to show we've attempted contact
+    await supabase.from("leads")
+      .update({ stage: "follow_up_required", updated_at: new Date().toISOString() })
       .in("id", coldLeads.map((l) => l.id));
 
     return Response.json({ ok: true, cold_leads: coldLeads.length });

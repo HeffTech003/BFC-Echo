@@ -48,10 +48,10 @@ export async function POST(req: NextRequest) {
 
   // Check for existing lead with same email
   if (email) {
-    const { data: existing } = await supabase.from("crm_leads").select("id").eq("email", email).single();
+    const { data: existing } = await supabase.from("leads").select("id").eq("email", email).single();
     if (existing) {
       // Update with new conversation info
-      await supabase.from("crm_leads").update({
+      await supabase.from("leads").update({
         notes:      conversation_summary ? `Chatbot follow-up: ${conversation_summary}` : undefined,
         updated_at: new Date().toISOString(),
       }).eq("id", existing.id);
@@ -60,16 +60,16 @@ export async function POST(req: NextRequest) {
   }
 
   // Create new lead
-  const { data: lead, error } = await supabase.from("crm_leads").insert({
+  const { data: lead, error } = await supabase.from("leads").insert({
     full_name:   name ?? email?.split("@")[0] ?? "Unknown",
     email:       email ?? null,
     phone:       phone ?? null,
     source,
-    status:      "new",
-    notes:       conversation_summary
+    stage:            "new_enquiry",
+    interested_class: disciplines?.join(", ") ?? null,
+    notes:            conversation_summary
       ? `Chatbot summary: ${conversation_summary}${disciplines?.length ? `\nInterested in: ${disciplines.join(", ")}` : ""}`
       : `Intent: ${intent}`,
-    tags:        disciplines ?? [],
   }).select("id").single();
 
   if (error || !lead) {

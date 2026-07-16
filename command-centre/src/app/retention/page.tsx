@@ -38,7 +38,7 @@ export default async function RetentionPage() {
     // All cancellation requests with member info
     supabase
       .from("cancellation_requests")
-      .select("id, member_id, status, reason_category, lock_in, created_at, requested_end_date")
+      .select("id, member_id, status, reason, comments, created_at, preferred_last_date")
       .order("created_at", { ascending: false })
       .limit(200),
 
@@ -116,7 +116,7 @@ export default async function RetentionPage() {
 
   const reasonCounts: Record<string, number> = {};
   for (const c of cancellations) {
-    const r = c.reason_category ?? "unspecified";
+    const r = c.reason ?? "unspecified";
     reasonCounts[r] = (reasonCounts[r] ?? 0) + 1;
   }
   const topReasons = Object.entries(reasonCounts)
@@ -249,7 +249,7 @@ export default async function RetentionPage() {
                 <TableRow>
                   <TableHead>Member</TableHead>
                   <TableHead>Reason</TableHead>
-                  <TableHead>Lock-in</TableHead>
+                  <TableHead>Comments</TableHead>
                   <TableHead>Requested end</TableHead>
                   <TableHead>Submitted</TableHead>
                 </TableRow>
@@ -267,14 +267,12 @@ export default async function RetentionPage() {
                           View member
                         </Link>
                       </TableCell>
-                      <TableCell className="text-sm">{c.reason_category ?? "—"}</TableCell>
-                      <TableCell>
-                        {c.lock_in
-                          ? <Badge className="bg-destructive/15 text-destructive text-xs font-normal">Yes</Badge>
-                          : <span className="text-muted-foreground text-sm">No</span>}
+                      <TableCell className="text-sm">{c.reason ?? "—"}</TableCell>
+                      <TableCell className="text-sm max-w-xs truncate text-muted-foreground">
+                        {c.comments ?? "—"}
                       </TableCell>
                       <TableCell className="text-sm">
-                        {c.requested_end_date ? formatDate(c.requested_end_date) : "—"}
+                        {c.preferred_last_date ? formatDate(c.preferred_last_date) : "—"}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {formatDate(c.created_at)}

@@ -74,10 +74,10 @@ export async function POST(req: NextRequest) {
 
   // Dedup by email
   if (email) {
-    const { data: existing } = await supabase.from("crm_leads").select("id, status").eq("email", email).single();
+    const { data: existing } = await supabase.from("leads").select("id, stage").eq("email", email).single();
     if (existing) {
-      if (existing.status === "new") {
-        await supabase.from("crm_leads").update({
+      if (existing.stage === "new_enquiry") {
+        await supabase.from("leads").update({
           notes: `Website re-submission (${form_type}): ${message ?? ""}`,
           updated_at: new Date().toISOString(),
         }).eq("id", existing.id);
@@ -93,14 +93,14 @@ export async function POST(req: NextRequest) {
     referral_source ? `Heard about us: ${referral_source}` : null,
   ].filter(Boolean).join("\n");
 
-  const { data: lead, error } = await supabase.from("crm_leads").insert({
-    full_name:   name,
-    email:       email ?? null,
-    phone:       phone ?? null,
-    source:      `website_${form_type}`,
-    status:      form_type === "trial" || form_type === "book_session" ? "qualified" : "new",
-    notes:       notes || null,
-    tags:        disciplines ?? [],
+  const { data: lead, error } = await supabase.from("leads").insert({
+    full_name:        name,
+    email:            email ?? null,
+    phone:            phone ?? null,
+    source:           `website_${form_type}`,
+    stage:            form_type === "trial" || form_type === "book_session" ? "trial_booked" : "new_enquiry",
+    interested_class: disciplines?.join(", ") ?? null,
+    notes:            notes || null,
   }).select("id").single();
 
   if (error || !lead) {

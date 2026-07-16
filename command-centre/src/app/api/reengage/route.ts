@@ -34,8 +34,8 @@ export async function POST(req: NextRequest) {
 
   if (member_id) {
     // Single member
-    const { data } = await supabase.from("members").select("id, full_name, email, phone").eq("id", member_id).single();
-    if (data) targets = [data];
+    const { data } = await supabase.from("members").select("id, full_name, primary_email, primary_phone").eq("id", member_id).single();
+    if (data) targets = [{ ...data, email: data.primary_email, phone: data.primary_phone }];
   } else {
     // All lapsed members not contacted in last 30 days
     const thirtyDaysAgo = new Date(Date.now() - 30 * 864e5).toISOString();
@@ -46,15 +46,16 @@ export async function POST(req: NextRequest) {
 
     const excludeIds = (alreadyContacted ?? []).map((r) => r.member_id);
 
-    let query = supabase.from("members").select("id, full_name, email, phone")
-      .in("status", ["churned", "cancelled", "inactive"]);
+    let query = supabase.from("members").select("id, full_name, primary_email, primary_phone")
+      .in("member_status", ["cancelled", "inactive"])
+      .is("merged_into", null);
 
     if (excludeIds.length > 0) {
       query = query.not("id", "in", `(${excludeIds.join(",")})`);
     }
 
     const { data } = await query.limit(100);
-    targets = data ?? [];
+    targets = (data ?? []).map((m) => ({ ...m, email: m.primary_email, phone: m.primary_phone }));
   }
 
   if (dry_run) {

@@ -60,7 +60,7 @@ export async function NotificationsPanel() {
     // Overdue open tasks
     supabase
       .from("tasks")
-      .select("id, title, due_date, member_id")
+      .select("id, title, due_date, related_member_id")
       .in("status", ["open", "in_progress"])
       .lt("due_date", today)
       .order("due_date")
@@ -88,7 +88,7 @@ export async function NotificationsPanel() {
     // Pending cancellation requests
     supabase
       .from("cancellation_requests")
-      .select("id, member_id, status, reason_category, created_at")
+      .select("id, member_id, status, reason, created_at")
       .eq("status", "new")
       .order("created_at")
       .limit(10),
@@ -117,7 +117,7 @@ export async function NotificationsPanel() {
       category: "Task",
       title:    t.title,
       detail:   `Due ${formatDate(t.due_date)} (${daysOver}d overdue)`,
-      href:     t.member_id ? `/members/${t.member_id}` : "/tasks",
+      href:     t.related_member_id ? `/members/${t.related_member_id}` : "/tasks",
     });
   }
 
@@ -157,7 +157,7 @@ export async function NotificationsPanel() {
       id:       `cancel-${c.id}`,
       severity: "warning",
       category: "Cancellation",
-      title:    `Cancellation request — ${c.reason_category ?? "no reason given"}`,
+      title:    `Cancellation request — ${c.reason ?? "no reason given"}`,
       detail:   `Submitted ${formatDate(c.created_at)}`,
       href:     c.member_id ? `/members/${c.member_id}` : "/cancellations",
     });

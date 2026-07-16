@@ -12,14 +12,14 @@ async function resolveSegment(
   segment: string,
   segmentTag?: string | null
 ) {
-  let query = supabase.from("members").select("id, full_name, email, phone, status, joined_at");
+  let query = supabase.from("members").select("id, full_name, primary_email, primary_phone, member_status, joined_at").is("merged_into", null);
 
   if (segment === "all_active") {
-    query = query.eq("status", "active");
+    query = query.eq("member_status", "active");
   } else if (segment === "lapsed") {
-    query = query.in("status", ["churned", "cancelled", "inactive"]);
+    query = query.in("member_status", ["cancelled", "inactive"]);
   } else if (segment === "trial") {
-    query = query.eq("status", "trial");
+    query = query.eq("member_type", "trial");
   } else if (segment === "no_booking_7d") {
     // Active members who have no booking in last 7 days
     const sevenDaysAgo = new Date(Date.now() - 7 * 864e5).toISOString();
@@ -28,12 +28,13 @@ async function resolveSegment(
       .select("member_id")
       .gte("booked_at", sevenDaysAgo);
     const bookerIds = (recentBookers ?? []).map((b) => b.member_id);
-    query = query.eq("status", "active");
+    query = query.eq("member_status", "active");
     if (bookerIds.length > 0) {
       query = query.not("id", "in", `(${bookerIds.join(",")})`);
     }
   } else if (segment === "tag" && segmentTag) {
-    query = query.contains("tags", [segmentTag]);
+    // No tags column on members — filter active members by member_type match
+    query = query.eq("member_status", "active").eq("member_type", segmentTag);
   }
 
   const { data } = await query.limit(2000);
@@ -103,8 +104,8 @@ export async function sendCampaign(formData: FormData) {
     recipients.map((r) => ({
       campaign_id,
       member_id: r.id,
-      email:     r.email ?? null,
-      phone:     r.phone ?? null,
+      email:     r.primary_email ?? null,
+      phone:     r.primary_phone ?? null,
       status:    "pending",
     }))
   );
@@ -126,7 +127,7 @@ export async function sendCampaign(formData: FormData) {
           body_sms:   campaign.body_sms,
           channels:   campaign.channels,
           recipients: recipients.map((r) => ({
-            id: r.id, name: r.full_name, email: r.email, phone: r.phone,
+            id: r.id, name: r.full_name, email: r.primary_email, phone: r.primary_phone,
           })),
         }),
       });

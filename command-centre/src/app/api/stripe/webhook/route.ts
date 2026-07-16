@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
         });
       } catch {}
       // Update member to active
-      await supabase.from("members").update({ status: "active", stripe_customer_id: customerId }).eq("id", memberId);
+      await supabase.from("members").update({ member_status: "active", stripe_customer_id: customerId }).eq("id", memberId);
     }
   }
 

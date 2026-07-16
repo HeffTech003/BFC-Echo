@@ -57,10 +57,10 @@ export async function POST(req: NextRequest) {
   if (!memberEmail || !memberName) {
     const { data: member } = await supabase
       .from("members")
-      .select("email, full_name")
+      .select("primary_email, full_name")
       .eq("id", member_id)
       .single();
-    memberEmail = memberEmail ?? member?.email;
+    memberEmail = memberEmail ?? member?.primary_email;
     memberName  = memberName ?? member?.full_name;
   }
 

@@ -20,9 +20,9 @@ async function buildContext(): Promise<string> {
       { data: lowStockProducts },
     ] = await Promise.all([
       supabase.from("members").select("*", { count: "exact", head: true }),
-      supabase.from("members").select("*", { count: "exact", head: true }).eq("status", "active"),
-      supabase.from("crm_leads").select("*", { count: "exact", head: true }).in("status", ["new", "contacted", "qualified"]),
-      supabase.from("staff_tasks").select("*", { count: "exact", head: true }).eq("status", "open"),
+      supabase.from("members").select("*", { count: "exact", head: true }).eq("member_status", "active").is("merged_into", null),
+      supabase.from("leads").select("*", { count: "exact", head: true }).not("stage", "in", "(joined,did_not_convert)"),
+      supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "open"),
       supabase.from("member_gradings").select("discipline, grade, created_at").gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }).limit(5),
       supabase.from("products").select("name, stock_qty").lte("stock_qty", 3).eq("is_active", true),
     ]);
@@ -31,8 +31,8 @@ async function buildContext(): Promise<string> {
 LIVE PLATFORM DATA (as of ${today}):
 - Total members: ${totalMembers ?? "unknown"}
 - Active members: ${activeMembers ?? "unknown"}
-- Open CRM leads: ${openLeads ?? "unknown"}
-- Open staff tasks: ${pendingTasks ?? "unknown"}
+- Open leads in pipeline: ${openLeads ?? "unknown"}
+- Open tasks: ${pendingTasks ?? "unknown"}
 - Recent gradings (last 30d): ${recentGradings?.map((g) => `${g.discipline} ${g.grade}`).join(", ") || "none"}
 - Low stock products (≤3): ${lowStockProducts?.map((p) => `${p.name} (${p.stock_qty})`).join(", ") || "none"}
 `.trim();
