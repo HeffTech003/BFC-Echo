@@ -44,7 +44,7 @@ export default async function PaymentsPage() {
     supabase
       .from("payment_events")
       .select("source_system, amount")
-      .in("event_type", ["payment_paid", "order"])
+      .in("event_type", ["payment_collected", "invoice_paid", "order"])
       .gte("occurred_at", thirtyDaysAgo),
     // Xero invoiced revenue — stored in xero_invoices, not payment_events
     supabase
@@ -89,17 +89,20 @@ export default async function PaymentsPage() {
       </p>
 
       <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-        {["gocardless", "square", "woocommerce", "xero"].map((src) => (
-          <Card key={src} className="gap-2 py-4">
-            <CardContent className="px-4">
-              <div className="text-2xl font-semibold tabular-nums">
-                {formatMoney(revenueBySource.get(src) ?? 0)}
-              </div>
-              <div className="mt-1 text-sm font-medium">{sourceLabel(src)}</div>
-              <div className="text-muted-foreground text-xs">revenue, last 30 days</div>
-            </CardContent>
-          </Card>
-        ))}
+        {["gocardless", "square", "woocommerce", "xero"].map((src) => {
+          const rev = revenueBySource.get(src) ?? 0;
+          return (
+            <Card key={src} className={`gap-2 py-4 border-l-4 ${rev > 0 ? "border-l-success" : "border-l-border"}`}>
+              <CardContent className="px-4">
+                <div className="text-2xl font-semibold tabular-nums">
+                  {formatMoney(rev)}
+                </div>
+                <div className="mt-1 text-sm font-medium">{sourceLabel(src)}</div>
+                <div className="text-muted-foreground text-xs">revenue, last 30 days</div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       <Card className="mb-8">

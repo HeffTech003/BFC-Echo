@@ -58,7 +58,17 @@ export default async function SubscriptionsPage() {
   const activeCount    = counts["active"] ?? 0;
   const pausedCount    = counts["paused"] ?? 0;
   const cancelledCount = (counts["cancelled"] ?? 0) + (counts["expired"] ?? 0);
-  const failedCount    = 0; // tracked in payment_events, not memberships
+
+  // Monthly Recurring Revenue from active subscriptions
+  const mrr = rows
+    .filter(m => m.status === "active" && m.amount)
+    .reduce((sum, m) => {
+      const amt = Number(m.amount) || 0;
+      // normalise to monthly
+      if (m.billing_interval === "yearly" || m.billing_interval === "annual") return sum + amt / 12;
+      if (m.billing_interval === "weekly") return sum + amt * 4.33;
+      return sum + amt; // default monthly
+    }, 0);
 
   return (
     <AppShell profile={profile}>
@@ -67,32 +77,32 @@ export default async function SubscriptionsPage() {
         <span className="text-muted-foreground text-sm">GoCardless direct debits</span>
       </div>
 
-      {/* KPI chips */}
+      {/* KPI cards */}
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Card className="py-4 gap-1">
+        <Card className="py-4 gap-1 border-l-4 border-l-success">
           <CardContent className="px-4">
-            <div className="text-2xl font-semibold tabular-nums text-success-foreground">{activeCount}</div>
+            <div className="text-2xl font-semibold tabular-nums">{activeCount}</div>
             <div className="text-sm font-medium mt-0.5">Active</div>
             <div className="text-xs text-muted-foreground">live mandates</div>
           </CardContent>
         </Card>
-        <Card className="py-4 gap-1">
+        <Card className="py-4 gap-1 border-l-4 border-l-success">
           <CardContent className="px-4">
-            <div className="text-2xl font-semibold tabular-nums text-warning-foreground">{pausedCount}</div>
+            <div className="text-2xl font-semibold tabular-nums">{formatMoney(mrr)}</div>
+            <div className="text-sm font-medium mt-0.5">Est. MRR</div>
+            <div className="text-xs text-muted-foreground">active subs, monthly</div>
+          </CardContent>
+        </Card>
+        <Card className="py-4 gap-1 border-l-4 border-l-warning">
+          <CardContent className="px-4">
+            <div className="text-2xl font-semibold tabular-nums">{pausedCount}</div>
             <div className="text-sm font-medium mt-0.5">Paused</div>
             <div className="text-xs text-muted-foreground">billing suspended</div>
           </CardContent>
         </Card>
-        <Card className="py-4 gap-1">
+        <Card className="py-4 gap-1 border-l-4 border-l-border">
           <CardContent className="px-4">
-            <div className="text-2xl font-semibold tabular-nums text-muted-foreground">{failedCount}</div>
-            <div className="text-sm font-medium mt-0.5">Failed</div>
-            <div className="text-xs text-muted-foreground">see Payments page</div>
-          </CardContent>
-        </Card>
-        <Card className="py-4 gap-1">
-          <CardContent className="px-4">
-            <div className="text-2xl font-semibold tabular-nums text-muted-foreground">{cancelledCount}</div>
+            <div className="text-2xl font-semibold tabular-nums">{cancelledCount}</div>
             <div className="text-sm font-medium mt-0.5">Cancelled</div>
             <div className="text-xs text-muted-foreground">inactive subscriptions</div>
           </CardContent>

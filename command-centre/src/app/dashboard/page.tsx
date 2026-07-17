@@ -214,7 +214,7 @@ export default async function DashboardPage({
       supabase
         .from("payment_events")
         .select("amount")
-        .eq("event_type", "payment_paid")
+        .in("event_type", ["payment_collected", "invoice_paid"])
         .gte("occurred_at", monthStart),
     ]);
 
@@ -368,12 +368,41 @@ export default async function DashboardPage({
       : null,
   ];
 
+  // ── Today greeting ──────────────────────────────────────────────────────────
+  const now = new Date();
+  const hour = now.getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const todayLabel = now.toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const firstName = profile.full_name?.split(" ")[0] ?? "Kaleb";
+
   return (
     <AppShell profile={profile}>
-      <h1 className="mb-1 text-2xl font-semibold">Dashboard</h1>
-      <p className="text-muted-foreground mb-6 text-sm">
-        Live counts from the operations database. Tiles link to their work areas.
-      </p>
+
+      {/* ── Today at BFC hero strip ──────────────────────────────────────────── */}
+      <div className="mb-6 rounded-xl bg-gradient-to-r from-primary to-red-700 text-white p-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <div className="text-lg font-semibold">{greeting}, {firstName} 👋</div>
+          <div className="text-sm opacity-80">{todayLabel}</div>
+        </div>
+        <div className="flex gap-6">
+          <div className="text-center">
+            <div className="text-2xl font-bold tabular-nums">{activeMembers.count ?? "—"}</div>
+            <div className="text-xs opacity-80">Active members</div>
+          </div>
+          {isFinance && (
+            <div className="text-center">
+              <div className="text-2xl font-bold tabular-nums">{xeroReady ? formatMoney(revenueMtd) : "—"}</div>
+              <div className="text-xs opacity-80">Revenue this month</div>
+            </div>
+          )}
+          <div className="text-center">
+            <div className={cn("text-2xl font-bold tabular-nums", (tasksDue.count ?? 0) > 0 ? "text-yellow-300" : "")}>
+              {tasksDue.count ?? 0}
+            </div>
+            <div className="text-xs opacity-80">Tasks overdue</div>
+          </div>
+        </div>
+      </div>
 
       {denied && (
         <p className="bg-destructive/10 text-destructive mb-6 rounded-md p-3 text-sm">
@@ -382,6 +411,7 @@ export default async function DashboardPage({
       )}
 
       {/* ── Operational tiles ──────────────────────────────────────────────── */}
+      <h2 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide">Operations</h2>
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
         {tiles
           .filter((t): t is Tile => t !== null)
@@ -558,7 +588,7 @@ export default async function DashboardPage({
       )}
 
         {/* ── New Platform Features ────────────────────────────────────────── */}
-        <div>
+        <div className="mt-8">
           <h2 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide">Platform Tools</h2>
           <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
             {[

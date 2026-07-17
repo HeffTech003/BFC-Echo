@@ -99,7 +99,7 @@ const COLUMNS: DataTableColumn<MemberRow>[] = [
 
 // ── Filter chip definitions ────────────────────────────────────────────────────
 
-const STATUS_FILTERS = ["all", "active", "inactive", "non_attending", "suspended", "cancelled", "pending"] as const;
+const STATUS_FILTERS = ["all", "active", "inactive", "suspended", "cancelled", "pending"] as const;
 const TYPE_FILTERS   = ["all", "gym_member", "nac", "online_customer", "staff", "supplier"] as const;
 
 // ── MembersTable ──────────────────────────────────────────────────────────────
