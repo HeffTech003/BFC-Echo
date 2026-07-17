@@ -1,11 +1,12 @@
 /**
  * /join — Public member sign-up flow
- * Step 1: Personal details + membership plan selection
- * Step 2: Waiver acceptance (reuses form_links system)
- * Step 3: Payment setup (Stripe Checkout or GoCardless)
- *
- * This is a server-rendered public page (no auth required).
- * On submission it creates: member record → Stripe customer → Checkout session
+ * Correct BFC pricing as of 2026:
+ *   Adult Weekly 6-month lock-in: $44.99/wk
+ *   Adult Monthly no lock-in:     $229.99/mo
+ *   Youth Weekly 6-month lock-in: $39.99/wk
+ *   Youth Monthly no lock-in:     $199.99/mo
+ *   Casual walk-in:               $25/session
+ *   Family discounts handled via contact — not automated
  */
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,13 +15,50 @@ import { submitJoinForm } from "./actions";
 export const metadata = { title: "Join Bendigo Fight Centre" };
 
 const PLANS = [
-  { id: "gym_monthly",   label: "Gym Membership",    price: "$89/month",  description: "Unlimited classes, all disciplines" },
-  { id: "nac_monthly",   label: "NAC Membership",    price: "$69/month",  description: "National Accreditation Centre — competition focus" },
-  { id: "casual",        label: "Casual Pass",        price: "$25/session", description: "No lock-in, pay per session" },
-  { id: "online",        label: "Online Membership",  price: "$39/month",  description: "Video tutorials + programming, train from anywhere" },
+  {
+    id: "adult_weekly",
+    label: "Adult — Weekly",
+    price: "$44.99/week",
+    badge: "6-month lock-in",
+    description: "Unlimited classes, all disciplines. Billed weekly.",
+  },
+  {
+    id: "adult_monthly",
+    label: "Adult — Monthly",
+    price: "$229.99/month",
+    badge: "No lock-in",
+    description: "Unlimited classes, all disciplines. Cancel anytime.",
+  },
+  {
+    id: "youth_weekly",
+    label: "Youth — Weekly",
+    price: "$39.99/week",
+    badge: "6-month lock-in",
+    description: "Under 18. Billed weekly. Guardian required.",
+  },
+  {
+    id: "youth_monthly",
+    label: "Youth — Monthly",
+    price: "$199.99/month",
+    badge: "No lock-in",
+    description: "Under 18. Cancel anytime. Guardian required.",
+  },
+  {
+    id: "casual",
+    label: "Casual Pass",
+    price: "$25/session",
+    badge: "Walk-in",
+    description: "Any class, any discipline. No commitment.",
+  },
 ] as const;
 
-export default function JoinPage({ searchParams }: { searchParams: { error?: string; plan?: string } }) {
+export default async function JoinPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string; plan?: string }>;
+}) {
+  const { error, plan: defaultPlan } = await searchParams;
+
   return (
     <main className="min-h-screen bg-background py-12 px-4">
       <div className="mx-auto max-w-2xl">
@@ -35,9 +73,9 @@ export default function JoinPage({ searchParams }: { searchParams: { error?: str
           </p>
         </div>
 
-        {searchParams.error && (
+        {error && (
           <div className="mb-6 rounded-lg bg-destructive/10 p-4 text-sm text-destructive">
-            {searchParams.error}
+            {error}
           </div>
         )}
 
@@ -91,22 +129,37 @@ export default function JoinPage({ searchParams }: { searchParams: { error?: str
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Choose your membership</CardTitle>
-              <CardDescription>You can change or cancel anytime.</CardDescription>
+              <CardDescription>All memberships include access to every class and discipline.</CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-3 md:grid-cols-2">
+            <CardContent className="space-y-3">
               {PLANS.map(plan => (
                 <label key={plan.id}
-                  className="relative flex cursor-pointer flex-col gap-1 rounded-lg border p-4 hover:border-primary [&:has(input:checked)]:border-primary [&:has(input:checked)]:bg-primary/5">
+                  className="relative flex cursor-pointer items-start gap-4 rounded-lg border p-4 hover:border-primary [&:has(input:checked)]:border-primary [&:has(input:checked)]:bg-primary/5">
                   <input type="radio" name="plan" value={plan.id}
-                    defaultChecked={plan.id === (searchParams.plan ?? "gym_monthly")}
-                    className="sr-only" />
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-sm">{plan.label}</span>
-                    <Badge variant="secondary" className="text-xs">{plan.price}</Badge>
+                    defaultChecked={plan.id === (defaultPlan ?? "adult_weekly")}
+                    className="mt-1 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-sm">{plan.label}</span>
+                      <Badge variant="outline" className="text-xs">{plan.badge}</Badge>
+                      <span className="ml-auto font-semibold text-sm">{plan.price}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">{plan.description}</p>
                   </div>
-                  <span className="text-xs text-muted-foreground">{plan.description}</span>
                 </label>
               ))}
+
+              {/* Family pricing callout */}
+              <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                <p className="font-medium text-foreground mb-1">Family pricing available</p>
+                <p>2 youth — 15% off · 3 youth — 20% off · 4 youth — 25% off</p>
+                <p className="mt-1">
+                  Contact us to set up family billing:{" "}
+                  <a href="mailto:bendigofightcentre@gmail.com" className="text-primary underline">
+                    bendigofightcentre@gmail.com
+                  </a>
+                </p>
+              </div>
             </CardContent>
           </Card>
 

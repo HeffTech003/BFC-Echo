@@ -15,13 +15,25 @@ const SUPABASE_URL     = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SVC_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const STRIPE_SECRET    = process.env.STRIPE_SECRET_KEY;
 
-// Stripe price IDs — create these in your Stripe Dashboard first
+/**
+ * Stripe price IDs — create matching products in Stripe Dashboard first.
+ * Add each price ID as an env var in Vercel (Settings → Environment Variables):
+ *   STRIPE_PRICE_ADULT_WEEKLY   → recurring weekly  $44.99  (6-month lock-in enforced via contract)
+ *   STRIPE_PRICE_ADULT_MONTHLY  → recurring monthly $229.99 (no lock-in)
+ *   STRIPE_PRICE_YOUTH_WEEKLY   → recurring weekly  $39.99  (6-month lock-in)
+ *   STRIPE_PRICE_YOUTH_MONTHLY  → recurring monthly $199.99 (no lock-in)
+ *   STRIPE_PRICE_CASUAL         → one-time          $25.00
+ */
 const PLAN_PRICE_IDS: Record<string, string> = {
-  gym_monthly:  process.env.STRIPE_PRICE_GYM_MONTHLY  ?? "",
-  nac_monthly:  process.env.STRIPE_PRICE_NAC_MONTHLY  ?? "",
-  casual:       process.env.STRIPE_PRICE_CASUAL        ?? "",
-  online:       process.env.STRIPE_PRICE_ONLINE        ?? "",
+  adult_weekly:   process.env.STRIPE_PRICE_ADULT_WEEKLY   ?? "",
+  adult_monthly:  process.env.STRIPE_PRICE_ADULT_MONTHLY  ?? "",
+  youth_weekly:   process.env.STRIPE_PRICE_YOUTH_WEEKLY   ?? "",
+  youth_monthly:  process.env.STRIPE_PRICE_YOUTH_MONTHLY  ?? "",
+  casual:         process.env.STRIPE_PRICE_CASUAL          ?? "",
 };
+
+// Casual is a one-time payment; all others are subscriptions
+const CASUAL_PLANS = new Set(["casual"]);
 
 export async function submitJoinForm(formData: FormData) {
   const first_name     = String(formData.get("first_name") ?? "").trim();
@@ -30,7 +42,7 @@ export async function submitJoinForm(formData: FormData) {
   const phone          = String(formData.get("phone") ?? "").trim() || null;
   const date_of_birth  = String(formData.get("date_of_birth") ?? "").trim() || null;
   const source         = String(formData.get("source") ?? "other");
-  const plan           = String(formData.get("plan") ?? "gym_monthly");
+  const plan           = String(formData.get("plan") ?? "adult_weekly");
   const signed_name    = String(formData.get("signed_name") ?? "").trim();
   const waiver_accepted = formData.get("waiver_accepted") === "on";
 
@@ -108,7 +120,7 @@ export async function submitJoinForm(formData: FormData) {
   const priceId = PLAN_PRICE_IDS[plan];
   if (!priceId) redirect("/join?error=Selected+plan+not+yet+available+online.+Please+call+us.");
 
-  const isCasual = plan === "casual";
+  const isCasual = CASUAL_PLANS.has(plan);
   const checkoutBody = new URLSearchParams({
     customer: stripeCustomerId,
     mode: isCasual ? "payment" : "subscription",
