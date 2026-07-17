@@ -10,31 +10,99 @@ async function buildContext(): Promise<string> {
     const supabase = await createClient();
     const today = new Date().toISOString().slice(0, 10);
     const thirtyDaysAgo = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
+    const sixtyDaysFromNow = new Date(Date.now() + 60 * 864e5).toISOString().slice(0, 10);
 
     const [
-      { count: totalMembers },
-      { count: activeMembers },
+      // Members — gym_member type only (excludes NACs, historical WooCommerce/GoCardless-only records)
+      { count: activeGymMembers },
+      { count: lapsedMembers },
+      { count: nacCount },
+      // Pipeline
       { count: openLeads },
       { count: pendingTasks },
+      // Cancellations last 30 days
+      { count: recentCancellations },
+      // Finance — revenue last 30 days
+      { data: recentPayments },
+      // Subscriptions
+      { count: activeSubscriptions },
+      // Compliance expiring in 60 days
+      { data: expiringCompliance },
+      // Gradings
       { data: recentGradings },
+      // Merch low stock
       { data: lowStockProducts },
+      // Attendance last 30 days
+      { count: attendanceLast30 },
     ] = await Promise.all([
-      supabase.from("members").select("*", { count: "exact", head: true }),
-      supabase.from("members").select("*", { count: "exact", head: true }).eq("member_status", "active").is("merged_into", null),
-      supabase.from("leads").select("*", { count: "exact", head: true }).not("stage", "in", "(joined,did_not_convert)"),
-      supabase.from("tasks").select("*", { count: "exact", head: true }).eq("status", "open"),
-      supabase.from("member_gradings").select("discipline, grade, created_at").gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }).limit(5),
-      supabase.from("products").select("name, stock_qty").lte("stock_qty", 3).eq("is_active", true),
+      supabase.from("members").select("*", { count: "exact", head: true })
+        .eq("member_type", "gym_member").eq("member_status", "active").is("merged_into", null),
+      supabase.from("members").select("*", { count: "exact", head: true })
+        .eq("member_type", "gym_member").eq("member_status", "lapsed").is("merged_into", null),
+      supabase.from("members").select("*", { count: "exact", head: true })
+        .eq("member_type", "nac").is("merged_into", null),
+      supabase.from("leads").select("*", { count: "exact", head: true })
+        .not("stage", "in", "(joined,did_not_convert)"),
+      supabase.from("tasks").select("*", { count: "exact", head: true })
+        .eq("status", "open"),
+      supabase.from("members").select("*", { count: "exact", head: true })
+        .eq("member_type", "gym_member").eq("member_status", "cancelled")
+        .gte("updated_at", thirtyDaysAgo),
+      supabase.from("payments").select("amount, payment_date, source")
+        .gte("payment_date", thirtyDaysAgo).order("payment_date", { ascending: false }).limit(200),
+      supabase.from("memberships").select("*", { count: "exact", head: true })
+        .eq("status", "active"),
+      supabase.from("staff_certifications").select("staff_id, cert_type, expiry_date")
+        .lte("expiry_date", sixtyDaysFromNow).gte("expiry_date", today)
+        .order("expiry_date", { ascending: true }).limit(10),
+      supabase.from("member_gradings").select("discipline, grade, created_at")
+        .gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }).limit(5),
+      supabase.from("products").select("name, stock_qty")
+        .lte("stock_qty", 3).eq("is_active", true),
+      supabase.from("attendance_records").select("*", { count: "exact", head: true })
+        .gte("attended_at", thirtyDaysAgo),
     ]);
+
+    // Sum revenue by source
+    const revenueBySource: Record<string, number> = {};
+    let totalRevenue = 0;
+    for (const p of recentPayments ?? []) {
+      const src = p.source ?? "unknown";
+      revenueBySource[src] = (revenueBySource[src] ?? 0) + (p.amount ?? 0);
+      totalRevenue += (p.amount ?? 0);
+    }
+    const revenueBreakdown = Object.entries(revenueBySource)
+      .map(([src, amt]) => `${src} $${amt.toFixed(2)}`).join(", ") || "no payments recorded";
 
     return `
 LIVE PLATFORM DATA (as of ${today}):
-- Total members: ${totalMembers ?? "unknown"}
-- Active members: ${activeMembers ?? "unknown"}
-- Open leads in pipeline: ${openLeads ?? "unknown"}
+
+MEMBERS (gym members only — excludes historical/NAC records):
+- Active gym members: ${activeGymMembers ?? "unknown"}
+- Lapsed gym members: ${lapsedMembers ?? "unknown"}
+- NAC accounts (parents/guardians of youth members): ${nacCount ?? "unknown"}
+- Cancelled in last 30 days: ${recentCancellations ?? "unknown"}
+- Active billing subscriptions: ${activeSubscriptions ?? "unknown"}
+
+PIPELINE:
+- Open leads: ${openLeads ?? "unknown"}
 - Open tasks: ${pendingTasks ?? "unknown"}
-- Recent gradings (last 30d): ${recentGradings?.map((g) => `${g.discipline} ${g.grade}`).join(", ") || "none"}
-- Low stock products (≤3): ${lowStockProducts?.map((p) => `${p.name} (${p.stock_qty})`).join(", ") || "none"}
+
+FINANCE (last 30 days):
+- Total revenue: $${totalRevenue.toFixed(2)}
+- Revenue by source: ${revenueBreakdown}
+
+COMPLIANCE (expiring within 60 days):
+${expiringCompliance?.length
+  ? expiringCompliance.map(c => `- ${c.cert_type} expires ${c.expiry_date}`).join("\n")
+  : "- All certifications current"}
+
+ACTIVITY (last 30 days):
+- Class attendance records: ${attendanceLast30 ?? "unknown"}
+- Recent gradings: ${recentGradings?.map((g) => `${g.discipline} ${g.grade}`).join(", ") || "none"}
+
+MERCH:
+- Low stock products (≤3 units): ${lowStockProducts?.map((p) => `${p.name} (${p.stock_qty})`).join(", ") || "none"}
 `.trim();
   } catch {
     return "Live data unavailable.";
