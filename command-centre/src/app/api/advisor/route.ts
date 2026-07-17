@@ -60,7 +60,7 @@ async function buildContext(): Promise<string> {
         .eq("member_type", "gym_member").eq("member_status", "cancelled")
         .gte("updated_at", thirtyDaysAgo),
       supabase.from("payment_events").select("amount, occurred_at, event_type")
-        .eq("event_type", "payment_paid").gte("occurred_at", thirtyDaysAgo)
+        .in("event_type", ["payment_collected", "invoice_paid"]).gte("occurred_at", thirtyDaysAgo)
         .order("occurred_at", { ascending: false }).limit(500),
       supabase.from("xero_invoices").select("amount_paid, date, status")
         .eq("status", "PAID").eq("invoice_type", "ACCREC").gte("date", thirtyDaysAgo)
@@ -83,14 +83,19 @@ async function buildContext(): Promise<string> {
     ]);
 
     // Revenue breakdown by source
-    const gcRevenue = (recentPaymentEvents ?? [])
+    const gcCollected = (recentPaymentEvents ?? [])
+      .filter(p => p.event_type === "payment_collected")
+      .reduce((sum, p) => sum + (p.amount ?? 0), 0);
+    const invoicePaid = (recentPaymentEvents ?? [])
+      .filter(p => p.event_type === "invoice_paid")
       .reduce((sum, p) => sum + (p.amount ?? 0), 0);
     const xeroRevenue = (recentXeroInvoices ?? [])
       .reduce((sum, i) => sum + (i.amount_paid ?? 0), 0);
-    const totalRevenue = gcRevenue + xeroRevenue;
+    const totalRevenue = gcCollected + invoicePaid + xeroRevenue;
     const revenueBreakdown = [
-      gcRevenue > 0 ? `GoCardless $${gcRevenue.toFixed(2)} (${recentPaymentEvents?.length ?? 0} payments)` : null,
-      xeroRevenue > 0 ? `Xero invoices $${xeroRevenue.toFixed(2)} (${recentXeroInvoices?.length ?? 0} invoices)` : null,
+      gcCollected > 0 ? `GoCardless collections $${gcCollected.toFixed(2)}` : null,
+      invoicePaid > 0 ? `GoCardless invoices $${invoicePaid.toFixed(2)}` : null,
+      xeroRevenue > 0 ? `Xero invoices $${xeroRevenue.toFixed(2)}` : null,
     ].filter(Boolean).join(", ") || "no payments recorded in last 30 days — check GoCardless and Xero directly";
 
     // Lead pipeline by stage

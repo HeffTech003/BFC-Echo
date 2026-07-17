@@ -29,7 +29,7 @@ const STATUS_COLOURS: Record<string, string> = {
 
 const TYPE_LABELS: Record<string, string> = {
   gym_member:      "Gym",
-  nac:             "NAC",
+  nac:             "Non-Attending",
   online_customer: "Online",
   staff:           "Staff",
   supplier:        "Supplier",
@@ -99,7 +99,7 @@ const COLUMNS: DataTableColumn<MemberRow>[] = [
 
 // ── Filter chip definitions ────────────────────────────────────────────────────
 
-const STATUS_FILTERS = ["all", "active", "inactive", "suspended", "cancelled", "pending"] as const;
+const STATUS_FILTERS = ["all", "active", "inactive", "non_attending", "suspended", "cancelled", "pending"] as const;
 const TYPE_FILTERS   = ["all", "gym_member", "nac", "online_customer", "staff", "supplier"] as const;
 
 // ── MembersTable ──────────────────────────────────────────────────────────────
@@ -147,7 +147,7 @@ export function MembersTable({ members: rows }: { members: MemberRow[] }) {
                   : "bg-transparent text-muted-foreground border-border hover:bg-muted"
               )}
             >
-              {s === "all" ? "All status" : s}
+              {s === "all" ? "All status" : s === "non_attending" ? "Non-Attending" : s}
             </button>
           ))}
         </div>
