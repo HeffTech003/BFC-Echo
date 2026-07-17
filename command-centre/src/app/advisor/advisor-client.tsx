@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { MarkdownText } from "@/components/markdown-text";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -136,13 +137,17 @@ export default function AdvisorClient() {
             className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
           >
             <div
-              className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm whitespace-pre-wrap leading-relaxed ${
+              className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                 msg.role === "user"
                   ? "bg-primary text-primary-foreground rounded-br-sm"
                   : "bg-muted rounded-bl-sm"
               }`}
             >
-              {msg.content}
+              {msg.role === "user" ? (
+                <span className="whitespace-pre-wrap">{msg.content}</span>
+              ) : (
+                <MarkdownText content={msg.content} />
+              )}
               {msg.role === "assistant" && streaming && idx === messages.length - 1 && (
                 <span className="ml-1 inline-block h-3.5 w-0.5 animate-pulse bg-current opacity-70" />
               )}

@@ -6,6 +6,7 @@
  * Uses the same /api/advisor streaming endpoint as the full Advisor page.
  */
 import { useState, useRef, useEffect, useCallback } from "react";
+import { MarkdownText } from "@/components/markdown-text";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -121,19 +122,24 @@ export default function AdvisorBubble() {
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                 <div
-                  className={`max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed whitespace-pre-wrap ${
+                  className={`max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed ${
                     msg.role === "user"
                       ? "bg-red-600 text-white"
                       : "bg-muted text-foreground"
                   }`}
                 >
-                  {msg.content || (streaming && i === messages.length - 1 ? (
+                  {msg.role === "user" ? (
+                    <span className="whitespace-pre-wrap">{msg.content}</span>
+                  ) : msg.content ? (
+                    <MarkdownText content={msg.content} />
+                  ) : null}
+                  {!msg.content && (streaming && i === messages.length - 1 ? (
                     <span className="inline-flex gap-1">
                       <span className="animate-bounce" style={{ animationDelay: "0ms" }}>·</span>
                       <span className="animate-bounce" style={{ animationDelay: "150ms" }}>·</span>
                       <span className="animate-bounce" style={{ animationDelay: "300ms" }}>·</span>
                     </span>
-                  ) : "")}
+                  ) : null)}
                 </div>
               </div>
             ))}
