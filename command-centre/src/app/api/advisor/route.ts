@@ -24,8 +24,10 @@ async function buildContext(): Promise<string> {
       { data: tasksDueSoon },
       // Cancellations last 30 days
       { count: recentCancellations },
-      // Finance
-      { data: recentPayments },
+      // Finance — GoCardless payment events
+      { data: recentPaymentEvents },
+      // Finance — Xero paid invoices
+      { data: recentXeroInvoices },
       { count: activeSubscriptions },
       // Compliance
       { data: expiringCompliance },
@@ -57,8 +59,12 @@ async function buildContext(): Promise<string> {
       supabase.from("members").select("*", { count: "exact", head: true })
         .eq("member_type", "gym_member").eq("member_status", "cancelled")
         .gte("updated_at", thirtyDaysAgo),
-      supabase.from("payments").select("amount, payment_date, source")
-        .gte("payment_date", thirtyDaysAgo).order("payment_date", { ascending: false }).limit(200),
+      supabase.from("payment_events").select("amount, occurred_at, event_type")
+        .eq("event_type", "payment_paid").gte("occurred_at", thirtyDaysAgo)
+        .order("occurred_at", { ascending: false }).limit(500),
+      supabase.from("xero_invoices").select("amount_paid, date, status")
+        .eq("status", "PAID").eq("invoice_type", "ACCREC").gte("date", thirtyDaysAgo)
+        .order("date", { ascending: false }).limit(500),
       supabase.from("memberships").select("*", { count: "exact", head: true })
         .eq("status", "active"),
       supabase.from("staff_certifications").select("staff_id, cert_type, expiry_date")
@@ -77,15 +83,15 @@ async function buildContext(): Promise<string> {
     ]);
 
     // Revenue breakdown by source
-    const revenueBySource: Record<string, number> = {};
-    let totalRevenue = 0;
-    for (const p of recentPayments ?? []) {
-      const src = p.source ?? "unknown";
-      revenueBySource[src] = (revenueBySource[src] ?? 0) + (p.amount ?? 0);
-      totalRevenue += (p.amount ?? 0);
-    }
-    const revenueBreakdown = Object.entries(revenueBySource)
-      .map(([src, amt]) => `${src} $${amt.toFixed(2)}`).join(", ") || "no payments recorded";
+    const gcRevenue = (recentPaymentEvents ?? [])
+      .reduce((sum, p) => sum + (p.amount ?? 0), 0);
+    const xeroRevenue = (recentXeroInvoices ?? [])
+      .reduce((sum, i) => sum + (i.amount_paid ?? 0), 0);
+    const totalRevenue = gcRevenue + xeroRevenue;
+    const revenueBreakdown = [
+      gcRevenue > 0 ? `GoCardless $${gcRevenue.toFixed(2)} (${recentPaymentEvents?.length ?? 0} payments)` : null,
+      xeroRevenue > 0 ? `Xero invoices $${xeroRevenue.toFixed(2)} (${recentXeroInvoices?.length ?? 0} invoices)` : null,
+    ].filter(Boolean).join(", ") || "no payments recorded in last 30 days — check GoCardless and Xero directly";
 
     // Lead pipeline by stage
     const stageCount: Record<string, number> = {};

@@ -114,6 +114,8 @@ type CancellationRequest = {
 const STATUS_COLOURS: Record<string, string> = {
   active:            "bg-success/15 text-success-foreground",
   inactive:          "bg-muted text-muted-foreground",
+  non_attending:     "bg-blue-500/15 text-blue-700",
+  lapsed:            "bg-warning/15 text-warning-foreground",
   suspended:         "bg-warning/15 text-warning-foreground",
   cancelled:         "bg-destructive/15 text-destructive",
   paused:            "bg-warning/15 text-warning-foreground",
@@ -149,7 +151,7 @@ function Pill({ value, fallback = "—" }: { value: string | null | undefined; f
 function MEMBER_TYPE_LABEL(t: string | null) {
   switch (t) {
     case "gym_member":      return "Gym Member";
-    case "nac":             return "NAC";
+    case "nac":             return "Non-Attending Contact";
     case "online_customer": return "Online Customer";
     case "supplier":        return "Supplier";
     case "staff":           return "Staff";
@@ -470,46 +472,29 @@ export default async function MemberProfilePage({
         />
       </Section>
 
-      {/* ── NAC guardian ──────────────────────────────────────────────────── */}
+      {/* ── NAC info banner ───────────────────────────────────────────────── */}
       {isNac && (
-        <Section title="Guardian / Parent">
-          {guardianInfo ? (
-            <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm sm:grid-cols-3">
-              {(["guardian_name", "guardian_email", "guardian_phone", "guardian_relationship"] as const).map((key) => {
-                const val = guardianInfo[key];
-                if (!val) return null;
-                return (
-                  <div key={key}>
-                    <div className="text-muted-foreground text-xs capitalize">
-                      {key.replace("guardian_", "").replace("_", " ")}
-                    </div>
-                    <div>{String(val)}</div>
-                  </div>
-                );
-              })}
-              {gcCustomerId && (
-                <div>
-                  <div className="text-muted-foreground text-xs">GoCardless customer</div>
-                  <a
-                    href={`https://manage.gocardless.com/customers/${gcCustomerId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline text-xs"
-                  >
-                    {gcCustomerId} ↗
-                  </a>
-                </div>
-              )}
+        <Card className="mt-6 border-blue-200 bg-blue-50/50">
+          <CardContent className="pt-5">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 text-sm font-semibold">
+                NAC
+              </div>
+              <div className="text-sm">
+                <p className="font-medium text-blue-900">Non-Attending Contact</p>
+                <p className="mt-1 text-blue-700">
+                  This person is a parent or guardian of an active gym member — they are not a member themselves.
+                  Their linked youth member(s) appear in the <strong>Family &amp; Relationships</strong> section above.
+                </p>
+                {nacRecord && (
+                  <p className="mt-2 text-xs text-blue-500">
+                    Clubworx NAC record: <code>{nacRecord.source_record_id}</code>
+                  </p>
+                )}
+              </div>
             </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No guardian info found in Clubworx source record.
-              {nacRecord && (
-                <span className="ml-1 text-xs">Clubworx ID: <code>{nacRecord.source_record_id}</code></span>
-              )}
-            </p>
-          )}
-        </Section>
+          </CardContent>
+        </Card>
       )}
 
       {/* ── Membership & billing ──────────────────────────────────────────── */}
