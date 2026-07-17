@@ -94,7 +94,7 @@ You cannot directly execute changes, but you can advise exactly what to do and w
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-3-5-haiku-20241022",
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 1024,
       stream: true,
       system: systemPrompt,
@@ -104,7 +104,15 @@ You cannot directly execute changes, but you can advise exactly what to do and w
 
   if (!anthropicRes.ok) {
     const errText = await anthropicRes.text();
-    return new Response(errText, { status: anthropicRes.status });
+    let errMsg = "Anthropic API error";
+    try {
+      const parsed = JSON.parse(errText);
+      errMsg = parsed.error?.message ?? (typeof parsed.error === "string" ? parsed.error : errMsg);
+    } catch {}
+    return new Response(
+      JSON.stringify({ error: errMsg }),
+      { status: anthropicRes.status, headers: { "Content-Type": "application/json" } }
+    );
   }
 
   // Pipe Anthropic SSE → client as plain text stream

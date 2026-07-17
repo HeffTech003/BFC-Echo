@@ -50,7 +50,11 @@ export default function AdvisorClient() {
       if (!res.ok) {
         const errText = await res.text();
         let msg = "AI advisor error";
-        try { msg = JSON.parse(errText).error ?? msg; } catch {}
+        try {
+          const parsed = JSON.parse(errText);
+          const e = parsed.error;
+          msg = (typeof e === "string" ? e : e?.message) ?? parsed.message ?? msg;
+        } catch {}
         setMessages((prev) => {
           const updated = [...prev];
           updated[updated.length - 1] = { role: "assistant", content: `⚠️ ${msg}` };
