@@ -84,7 +84,9 @@ Priority: high = injury/complaint/legal/cancellation/billing; medium = new lead/
   let triage: TriageResult | null = null;
   if (aiRes.ok) {
     const aiData = await aiRes.json() as { content: { type: string; text: string }[] };
-    try { triage = JSON.parse(aiData.content?.[0]?.text ?? "{}"); } catch {}
+    const raw = aiData.content?.[0]?.text ?? "{}";
+    const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim();
+    try { triage = JSON.parse(cleaned); } catch {}
   }
 
   // ── Save to email_triage_log ─────────────────────────────────────────────────

@@ -97,9 +97,12 @@ ${body}`;
   const data = await res.json() as { content: { type: string; text: string }[] };
   const text = data.content?.[0]?.text ?? "{}";
 
+  // Strip markdown code fences if the model wraps the JSON
+  const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim();
+
   let parsed: TriageResult;
   try {
-    parsed = JSON.parse(text);
+    parsed = JSON.parse(cleaned);
   } catch {
     return new Response(JSON.stringify({ error: "AI response malformed", raw: text }), {
       status: 502,
