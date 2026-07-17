@@ -13,27 +13,31 @@ async function buildContext(): Promise<string> {
     const sixtyDaysFromNow = new Date(Date.now() + 60 * 864e5).toISOString().slice(0, 10);
 
     const [
-      // Members — gym_member type only (excludes NACs, historical WooCommerce/GoCardless-only records)
+      // Members
       { count: activeGymMembers },
       { count: lapsedMembers },
       { count: nacCount },
+      { count: newMembersLast30 },
       // Pipeline
-      { count: openLeads },
+      { data: leadsByStage },
       { count: pendingTasks },
+      { data: tasksDueSoon },
       // Cancellations last 30 days
       { count: recentCancellations },
-      // Finance — revenue last 30 days
+      // Finance
       { data: recentPayments },
-      // Subscriptions
       { count: activeSubscriptions },
-      // Compliance expiring in 60 days
+      // Compliance
       { data: expiringCompliance },
       // Gradings
       { data: recentGradings },
-      // Merch low stock
+      // Merch
       { data: lowStockProducts },
-      // Attendance last 30 days
+      { data: recentMerchOrders },
+      // Attendance & classes
       { count: attendanceLast30 },
+      { data: popularClasses },
+      // New members joined this month
     ] = await Promise.all([
       supabase.from("members").select("*", { count: "exact", head: true })
         .eq("member_type", "gym_member").eq("member_status", "active").is("merged_into", null),
@@ -41,10 +45,15 @@ async function buildContext(): Promise<string> {
         .eq("member_type", "gym_member").eq("member_status", "lapsed").is("merged_into", null),
       supabase.from("members").select("*", { count: "exact", head: true })
         .eq("member_type", "nac").is("merged_into", null),
-      supabase.from("leads").select("*", { count: "exact", head: true })
+      supabase.from("members").select("*", { count: "exact", head: true })
+        .eq("member_type", "gym_member").gte("joined_at", thirtyDaysAgo).is("merged_into", null),
+      supabase.from("leads").select("stage, source")
         .not("stage", "in", "(joined,did_not_convert)"),
       supabase.from("tasks").select("*", { count: "exact", head: true })
         .eq("status", "open"),
+      supabase.from("tasks").select("title, priority, due_date")
+        .in("status", ["open", "in_progress"]).lte("due_date", new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10))
+        .order("due_date").limit(5),
       supabase.from("members").select("*", { count: "exact", head: true })
         .eq("member_type", "gym_member").eq("member_status", "cancelled")
         .gte("updated_at", thirtyDaysAgo),
@@ -54,16 +63,20 @@ async function buildContext(): Promise<string> {
         .eq("status", "active"),
       supabase.from("staff_certifications").select("staff_id, cert_type, expiry_date")
         .lte("expiry_date", sixtyDaysFromNow).gte("expiry_date", today)
-        .order("expiry_date", { ascending: true }).limit(10),
+        .order("expiry_date").limit(10),
       supabase.from("member_gradings").select("discipline, grade, created_at")
         .gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }).limit(5),
       supabase.from("products").select("name, stock_qty")
         .lte("stock_qty", 3).eq("is_active", true),
+      supabase.from("merch_orders").select("total_amount, status, created_at")
+        .gte("created_at", thirtyDaysAgo).order("created_at", { ascending: false }).limit(50),
       supabase.from("attendance_records").select("*", { count: "exact", head: true })
         .gte("attended_at", thirtyDaysAgo),
+      supabase.from("attendance_records").select("class_name")
+        .gte("attended_at", thirtyDaysAgo).limit(500),
     ]);
 
-    // Sum revenue by source
+    // Revenue breakdown by source
     const revenueBySource: Record<string, number> = {};
     let totalRevenue = 0;
     for (const p of recentPayments ?? []) {
@@ -74,35 +87,70 @@ async function buildContext(): Promise<string> {
     const revenueBreakdown = Object.entries(revenueBySource)
       .map(([src, amt]) => `${src} $${amt.toFixed(2)}`).join(", ") || "no payments recorded";
 
-    return `
-LIVE PLATFORM DATA (as of ${today}):
+    // Lead pipeline by stage
+    const stageCount: Record<string, number> = {};
+    for (const l of leadsByStage ?? []) {
+      const s = l.stage ?? "unknown";
+      stageCount[s] = (stageCount[s] ?? 0) + 1;
+    }
+    const leadSourceCount: Record<string, number> = {};
+    for (const l of leadsByStage ?? []) {
+      const s = l.source ?? "unknown";
+      leadSourceCount[s] = (leadSourceCount[s] ?? 0) + 1;
+    }
 
-MEMBERS (gym members only — excludes historical/NAC records):
+    // Most popular classes last 30 days
+    const classCount: Record<string, number> = {};
+    for (const a of popularClasses ?? []) {
+      if (a.class_name) classCount[a.class_name] = (classCount[a.class_name] ?? 0) + 1;
+    }
+    const topClasses = Object.entries(classCount)
+      .sort((a, b) => b[1] - a[1]).slice(0, 5)
+      .map(([name, cnt]) => `${name} (${cnt} attendees)`).join(", ") || "no data";
+
+    // Merch revenue last 30 days
+    const merchRevenue = (recentMerchOrders ?? [])
+      .filter(o => o.status !== "cancelled")
+      .reduce((sum, o) => sum + (o.total_amount ?? 0), 0);
+
+    return `
+LIVE PLATFORM DATA (as of ${today}) — data is fetched fresh every message:
+
+MEMBERS:
 - Active gym members: ${activeGymMembers ?? "unknown"}
-- Lapsed gym members: ${lapsedMembers ?? "unknown"}
-- NAC accounts (parents/guardians of youth members): ${nacCount ?? "unknown"}
+- New gym members joined last 30 days: ${newMembersLast30 ?? "unknown"}
+- Lapsed gym members (win-back opportunity): ${lapsedMembers ?? "unknown"}
 - Cancelled in last 30 days: ${recentCancellations ?? "unknown"}
+- NAC accounts (parents/guardians of youth members): ${nacCount ?? "unknown"}
 - Active billing subscriptions: ${activeSubscriptions ?? "unknown"}
 
-PIPELINE:
-- Open leads: ${openLeads ?? "unknown"}
-- Open tasks: ${pendingTasks ?? "unknown"}
+LEADS PIPELINE:
+- By stage: ${Object.entries(stageCount).map(([s, n]) => `${s}: ${n}`).join(", ") || "none"}
+- By source: ${Object.entries(leadSourceCount).map(([s, n]) => `${s}: ${n}`).join(", ") || "none"}
+
+TASKS:
+- Total open tasks: ${pendingTasks ?? "unknown"}
+- Due in next 7 days: ${tasksDueSoon?.map(t => `"${t.title}" (${t.priority}, due ${t.due_date})`).join("; ") || "none"}
 
 FINANCE (last 30 days):
 - Total revenue: $${totalRevenue.toFixed(2)}
 - Revenue by source: ${revenueBreakdown}
+- Merch shop revenue: $${merchRevenue.toFixed(2)}
 
 COMPLIANCE (expiring within 60 days):
 ${expiringCompliance?.length
   ? expiringCompliance.map(c => `- ${c.cert_type} expires ${c.expiry_date}`).join("\n")
   : "- All certifications current"}
 
-ACTIVITY (last 30 days):
-- Class attendance records: ${attendanceLast30 ?? "unknown"}
-- Recent gradings: ${recentGradings?.map((g) => `${g.discipline} ${g.grade}`).join(", ") || "none"}
+CLASS ATTENDANCE (last 30 days):
+- Total attendance records: ${attendanceLast30 ?? "unknown"}
+- Most popular classes: ${topClasses}
 
-MERCH:
-- Low stock products (≤3 units): ${lowStockProducts?.map((p) => `${p.name} (${p.stock_qty})`).join(", ") || "none"}
+GRADING & BELTS (last 30 days):
+- Recent promotions: ${recentGradings?.map(g => `${g.discipline} ${g.grade}`).join(", ") || "none"}
+
+MERCH INVENTORY:
+- Low stock products (≤3 units): ${lowStockProducts?.map(p => `${p.name} (${p.stock_qty})`).join(", ") || "none"}
 `.trim();
   } catch {
     return "Live data unavailable.";
@@ -144,6 +192,8 @@ You help the BFC team with:
 - Creating action plans and staff tasks
 
 You speak in plain Australian English, are direct and concise, and always ground your advice in the actual data below.
+
+IMPORTANT: The data below is fetched LIVE from the BFC database every single message — it is not static. You have real-time visibility into members, leads, tasks, revenue, attendance, compliance, and merch. When asked about current state, answer confidently from the data provided. Never say you "don't have access" to the app — you do, through this live data feed.
 
 ${context}
 
