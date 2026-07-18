@@ -149,28 +149,32 @@ export default async function CoachesCertPage() {
 
       {/* Summary cards */}
       <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-        <Card className="border-l-4 border-l-success">
-          <CardContent className="py-4">
+        <Card className="gap-2 py-4 border-l-4 border-l-success">
+          <CardContent className="px-4">
             <div className="text-3xl font-bold tabular-nums">{summary.ok}</div>
-            <div className="text-sm font-medium text-success-foreground">Fully compliant</div>
+            <div className="mt-1 text-sm font-medium">Fully compliant</div>
+            <div className="text-xs text-muted-foreground mt-0.5">all certs current</div>
           </CardContent>
         </Card>
-        <Card className="border-l-4 border-l-warning">
-          <CardContent className="py-4">
+        <Card className="gap-2 py-4 border-l-4 border-l-warning">
+          <CardContent className="px-4">
             <div className="text-3xl font-bold tabular-nums">{summary.expiring}</div>
-            <div className="text-sm font-medium">Expiring within 60d</div>
+            <div className="mt-1 text-sm font-medium">Expiring soon</div>
+            <div className="text-xs text-muted-foreground mt-0.5">within 60 days</div>
           </CardContent>
         </Card>
-        <Card className="border-l-4 border-l-destructive">
-          <CardContent className="py-4">
+        <Card className={`gap-2 py-4 border-l-4 ${summary.expired > 0 ? "border-l-destructive" : "border-l-border"}`}>
+          <CardContent className="px-4">
             <div className="text-3xl font-bold tabular-nums">{summary.expired}</div>
-            <div className="text-sm font-medium text-destructive">Expired</div>
+            <div className="mt-1 text-sm font-medium">Expired</div>
+            <div className="text-xs text-muted-foreground mt-0.5">needs renewal</div>
           </CardContent>
         </Card>
-        <Card className="border-l-4 border-l-muted">
-          <CardContent className="py-4">
+        <Card className={`gap-2 py-4 border-l-4 ${summary.missing > 0 ? "border-l-warning" : "border-l-border"}`}>
+          <CardContent className="px-4">
             <div className="text-3xl font-bold tabular-nums">{summary.missing}</div>
-            <div className="text-sm font-medium text-muted-foreground">Records missing</div>
+            <div className="mt-1 text-sm font-medium">Records missing</div>
+            <div className="text-xs text-muted-foreground mt-0.5">not yet uploaded</div>
           </CardContent>
         </Card>
       </div>

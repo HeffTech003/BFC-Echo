@@ -222,7 +222,7 @@ export default async function CompliancePage() {
 
       <div className="mb-8 grid gap-4 md:grid-cols-3 lg:grid-cols-4">
         <Link href="/compliance/coaches">
-          <Card className="h-full">
+          <Card className="h-full border-l-4 border-l-border hover:border-l-primary transition-colors">
             <CardHeader>
               <CardTitle className="text-base">Coach Certifications</CardTitle>
               <CardDescription>
@@ -232,7 +232,7 @@ export default async function CompliancePage() {
           </Card>
         </Link>
         <Link href="/compliance/policies">
-          <Card className="h-full">
+          <Card className="h-full border-l-4 border-l-border hover:border-l-primary transition-colors">
             <CardHeader>
               <CardTitle className="text-base">Policy Library</CardTitle>
               <CardDescription>{policies.length} current policies</CardDescription>

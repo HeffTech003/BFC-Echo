@@ -2,15 +2,16 @@
 
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { TriageResult } from "../api/email-triage/route";
 
-const PRIORITY_COLOURS = {
-  high:   "bg-red-100 text-red-800 border-red-200",
-  medium: "bg-yellow-100 text-yellow-800 border-yellow-200",
-  low:    "bg-green-100 text-green-800 border-green-200",
+const PRIORITY_VARIANT: Record<string, "destructive" | "warning" | "success"> = {
+  high:   "destructive",
+  medium: "warning",
+  low:    "success",
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -171,19 +172,19 @@ export default function EmailTriageClient() {
           {result && (
             <>
               {/* Overview */}
-              <Card className={result.escalate ? "border-red-300" : ""}>
+              <Card className={result.escalate ? "border-l-4 border-l-destructive" : ""}>
                 <CardContent className="pt-4 space-y-3">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${PRIORITY_COLOURS[result.priority]}`}>
+                    <Badge variant={PRIORITY_VARIANT[result.priority] ?? "outline"} className="uppercase tracking-wide">
                       {result.priority} priority
-                    </span>
-                    <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium">
+                    </Badge>
+                    <Badge variant="secondary">
                       {CATEGORY_LABELS[result.category] ?? result.category}
-                    </span>
+                    </Badge>
                     {result.escalate && (
-                      <span className="rounded-full bg-red-600 text-white px-3 py-1 text-xs font-bold">
+                      <Badge variant="destructive" className="font-bold">
                         ⚠ ESCALATE
-                      </span>
+                      </Badge>
                     )}
                   </div>
 
@@ -250,9 +251,9 @@ export default function EmailTriageClient() {
                     className="w-full rounded-lg border p-2.5 text-left text-xs hover:bg-muted"
                   >
                     <div className="flex items-center gap-2">
-                      <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${PRIORITY_COLOURS[h.result.priority]}`}>
+                      <Badge variant={PRIORITY_VARIANT[h.result.priority] ?? "outline"} className="uppercase text-[10px]">
                         {h.result.priority}
-                      </span>
+                      </Badge>
                       <span className="font-medium truncate">{h.subject}</span>
                     </div>
                     <div className="text-muted-foreground mt-0.5 truncate">{h.from}</div>

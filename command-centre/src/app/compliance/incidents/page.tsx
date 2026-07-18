@@ -41,14 +41,48 @@ export default async function IncidentsPage() {
   const open = incidents.filter((i) => i.status !== "closed");
   const closed = incidents.filter((i) => i.status === "closed");
   const today = isoToday();
+  const overdue = open.filter((i) => i.review_date && i.review_date < today).length;
+  const critical = open.filter((i) => i.severity === "critical").length;
 
   return (
     <AppShell profile={profile}>
       <h1 className="mb-1 text-2xl font-semibold">Incident Reports</h1>
-      <p className="text-muted-foreground mb-6 text-sm">
+      <p className="text-muted-foreground mb-4 text-sm">
         Restricted workflow: submitted → risk assessed → actions recorded → follow-up →
         review date → closed only with outcome notes (database-enforced).
       </p>
+
+      {/* Stat cards */}
+      <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+        <Card className={`gap-2 py-4 border-l-4 ${open.length > 0 ? "border-l-warning" : "border-l-border"}`}>
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{open.length}</div>
+            <div className="mt-1 text-sm font-medium">Open cases</div>
+            <div className="text-xs text-muted-foreground mt-0.5">awaiting closure</div>
+          </CardContent>
+        </Card>
+        <Card className={`gap-2 py-4 border-l-4 ${critical > 0 ? "border-l-destructive" : "border-l-border"}`}>
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{critical}</div>
+            <div className="mt-1 text-sm font-medium">Critical</div>
+            <div className="text-xs text-muted-foreground mt-0.5">highest severity open</div>
+          </CardContent>
+        </Card>
+        <Card className={`gap-2 py-4 border-l-4 ${overdue > 0 ? "border-l-destructive" : "border-l-border"}`}>
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{overdue}</div>
+            <div className="mt-1 text-sm font-medium">Review overdue</div>
+            <div className="text-xs text-muted-foreground mt-0.5">past review date</div>
+          </CardContent>
+        </Card>
+        <Card className="gap-2 py-4 border-l-4 border-l-success">
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{closed.length}</div>
+            <div className="mt-1 text-sm font-medium">Closed</div>
+            <div className="text-xs text-muted-foreground mt-0.5">resolved with outcomes</div>
+          </CardContent>
+        </Card>
+      </div>
 
       <Card className="mb-8">
         <CardHeader>

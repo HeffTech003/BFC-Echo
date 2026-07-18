@@ -53,14 +53,48 @@ export default async function PoliciesPage() {
   const current = versions.filter((v) => v.is_current);
   const today = isoToday();
   const soon = isoDaysAgo(-30);
+  const overdueReviews = current.filter((v) => v.review_date && v.review_date < today).length;
+  const dueSoonReviews = current.filter((v) => v.review_date && v.review_date >= today && v.review_date <= soon).length;
 
   return (
     <AppShell profile={profile}>
       <h1 className="mb-1 text-2xl font-semibold">Policy Library</h1>
-      <p className="text-muted-foreground mb-6 text-sm">
+      <p className="text-muted-foreground mb-4 text-sm">
         Versioned policies with signed acknowledgements. Only the current version of
         each policy is offered for signing.
       </p>
+
+      {/* Stat cards */}
+      <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+        <Card className="gap-2 py-4 border-l-4 border-l-border">
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{current.length}</div>
+            <div className="mt-1 text-sm font-medium">Current policies</div>
+            <div className="text-xs text-muted-foreground mt-0.5">active versions</div>
+          </CardContent>
+        </Card>
+        <Card className="gap-2 py-4 border-l-4 border-l-border">
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{versions.length}</div>
+            <div className="mt-1 text-sm font-medium">All versions</div>
+            <div className="text-xs text-muted-foreground mt-0.5">inc. superseded</div>
+          </CardContent>
+        </Card>
+        <Card className={`gap-2 py-4 border-l-4 ${dueSoonReviews > 0 ? "border-l-warning" : "border-l-border"}`}>
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{dueSoonReviews}</div>
+            <div className="mt-1 text-sm font-medium">Due soon</div>
+            <div className="text-xs text-muted-foreground mt-0.5">review within 30 days</div>
+          </CardContent>
+        </Card>
+        <Card className={`gap-2 py-4 border-l-4 ${overdueReviews > 0 ? "border-l-destructive" : "border-l-border"}`}>
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{overdueReviews}</div>
+            <div className="mt-1 text-sm font-medium">Review overdue</div>
+            <div className="text-xs text-muted-foreground mt-0.5">past scheduled review</div>
+          </CardContent>
+        </Card>
+      </div>
 
       {canManage && (
         <Card className="mb-8">
