@@ -1,0 +1,281 @@
+{
+  "name": "WF-Welcome",
+  "nodes": [
+    {
+      "id": "wfw-01",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bfc-welcome",
+        "authentication": "none",
+        "options": {}
+      },
+      "webhookId": "bfc-welcome"
+    },
+    {
+      "id": "wfw-02",
+      "name": "Verify Secret",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-01",
+              "leftValue": "={{ $json.headers['x-webhook-secret'] }}",
+              "rightValue": "={{ $env.N8N_WEBHOOK_SECRET }}",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "wfw-03",
+      "name": "Day 0 — Welcome Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [680, 200],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $('Webhook').item.json.body.email }}",
+        "subject": "=Welcome to Bendigo Fight Centre, {{ $('Webhook').item.json.body.name }}!",
+        "message": "=Hi {{ $('Webhook').item.json.body.name }},\n\nWelcome to BFC! We're pumped to have you.\n\nYour membership is now active. Here's what to do next:\n\n👉 Book your first class: https://bfc-echo.vercel.app/portal\n📅 View the timetable: https://bfc-echo.vercel.app/timetable\n\nWe have BJJ, boxing, Muay Thai, wrestling and MMA — something for every level.\n\nIf you have any questions, just reply to this email or give us a call.\n\nSee you on the mats,\nKaleb\nBendigo Fight Centre\nhttps://bendigofightcentre.com.au",
+        "options": {
+          "replyTo": "bendigofightcentre@gmail.com"
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail Account"
+        }
+      }
+    },
+    {
+      "id": "wfw-04",
+      "name": "Wait 2 Days",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [900, 200],
+      "parameters": {
+        "resume": "timeInterval",
+        "unit": "days",
+        "amount": 2,
+        "options": {}
+      }
+    },
+    {
+      "id": "wfw-05",
+      "name": "Day 2 — Check In",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [1120, 200],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $('Webhook').item.json.body.email }}",
+        "subject": "=How's your first few days going, {{ $('Webhook').item.json.body.name }}?",
+        "message": "=Hey {{ $('Webhook').item.json.body.name }},\n\nJust checking in — have you had a chance to come in yet?\n\nIf you haven't booked your first class, you can do it here:\nhttps://bfc-echo.vercel.app/portal\n\nOur coaches are super welcoming to new members so don't be shy — everyone starts somewhere!\n\nLet me know if you need anything.\n\nKaleb\nBendigo Fight Centre",
+        "options": {
+          "replyTo": "bendigofightcentre@gmail.com"
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail Account"
+        }
+      }
+    },
+    {
+      "id": "wfw-06",
+      "name": "Wait 5 Days",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [1340, 200],
+      "parameters": {
+        "resume": "timeInterval",
+        "unit": "days",
+        "amount": 5,
+        "options": {}
+      }
+    },
+    {
+      "id": "wfw-07",
+      "name": "Day 7 — Timetable",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [1560, 200],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $('Webhook').item.json.body.email }}",
+        "subject": "=Your BFC timetable this week",
+        "message": "=Hey {{ $('Webhook').item.json.body.name }},\n\nHere's what's on this week — pick a session and come train!\n\n📋 Full timetable: https://bfc-echo.vercel.app/timetable\n\nWe've got BJJ, boxing, Muay Thai, wrestling and MMA — something for every level.\n\nSee you soon,\nKaleb\nBendigo Fight Centre",
+        "options": {
+          "replyTo": "bendigofightcentre@gmail.com"
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail Account"
+        }
+      }
+    },
+    {
+      "id": "wfw-08",
+      "name": "Wait 7 Days",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [1780, 200],
+      "parameters": {
+        "resume": "timeInterval",
+        "unit": "days",
+        "amount": 7,
+        "options": {}
+      }
+    },
+    {
+      "id": "wfw-09",
+      "name": "Day 14 — BFC Family",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [2000, 200],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $('Webhook').item.json.body.email }}",
+        "subject": "=You're part of the BFC family now",
+        "message": "=Hey {{ $('Webhook').item.json.body.name }},\n\nYou've been training with us for two weeks — legend!\n\nDon't forget you can manage your membership, check your booking history, and update your details at:\nhttps://bfc-echo.vercel.app/portal\n\nKeep showing up — consistency is everything in martial arts.\n\nKaleb\nBendigo Fight Centre",
+        "options": {
+          "replyTo": "bendigofightcentre@gmail.com"
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail Account"
+        }
+      }
+    },
+    {
+      "id": "wfw-10",
+      "name": "Wait 16 Days",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [2220, 200],
+      "parameters": {
+        "resume": "timeInterval",
+        "unit": "days",
+        "amount": 16,
+        "options": {}
+      }
+    },
+    {
+      "id": "wfw-11",
+      "name": "Day 30 — Google Review",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [2440, 200],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $('Webhook').item.json.body.email }}",
+        "subject": "=Quick favour — leave us a Google review?",
+        "message": "=Hey {{ $('Webhook').item.json.body.name }},\n\nYou've been with us a month now — time flies!\n\nIf you've been enjoying training, we'd really appreciate a Google review. It only takes 2 minutes and makes a huge difference for a small gym like ours.\n\n⭐ Leave a review: https://g.page/r/[YOUR_GOOGLE_REVIEW_LINK]/review\n\nThanks legend,\nKaleb\nBendigo Fight Centre",
+        "options": {
+          "replyTo": "bendigofightcentre@gmail.com"
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail Account"
+        }
+      }
+    },
+    {
+      "id": "wfw-12",
+      "name": "Rejected — Bad Secret",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [680, 420],
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [{ "node": "Verify Secret", "type": "main", "index": 0 }]
+      ]
+    },
+    "Verify Secret": {
+      "main": [
+        [{ "node": "Day 0 — Welcome Email", "type": "main", "index": 0 }],
+        [{ "node": "Rejected — Bad Secret", "type": "main", "index": 0 }]
+      ]
+    },
+    "Day 0 — Welcome Email": {
+      "main": [
+        [{ "node": "Wait 2 Days", "type": "main", "index": 0 }]
+      ]
+    },
+    "Wait 2 Days": {
+      "main": [
+        [{ "node": "Day 2 — Check In", "type": "main", "index": 0 }]
+      ]
+    },
+    "Day 2 — Check In": {
+      "main": [
+        [{ "node": "Wait 5 Days", "type": "main", "index": 0 }]
+      ]
+    },
+    "Wait 5 Days": {
+      "main": [
+        [{ "node": "Day 7 — Timetable", "type": "main", "index": 0 }]
+      ]
+    },
+    "Day 7 — Timetable": {
+      "main": [
+        [{ "node": "Wait 7 Days", "type": "main", "index": 0 }]
+      ]
+    },
+    "Wait 7 Days": {
+      "main": [
+        [{ "node": "Day 14 — BFC Family", "type": "main", "index": 0 }]
+      ]
+    },
+    "Day 14 — BFC Family": {
+      "main": [
+        [{ "node": "Wait 16 Days", "type": "main", "index": 0 }]
+      ]
+    },
+    "Wait 16 Days": {
+      "main": [
+        [{ "node": "Day 30 — Google Review", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "bfc-echo"
+  },
+  "tags": [{ "name": "BFC" }],
+  "notes": "SETUP:\n1. Connect your Gmail account in Credentials\n2. Set N8N_WEBHOOK_SECRET environment variable in n8n (Settings → Variables)\n3. Copy this workflow's webhook URL and paste into N8N_WELCOME_WEBHOOK_URL in Vercel\n4. Replace [YOUR_GOOGLE_REVIEW_LINK] in the Day 30 email with your actual Google review URL\n5. Activate the workflow\n\nPayload received: { member_id, name, email, plan }\n\nThis workflow sends a 5-email welcome sequence over 30 days:\n- Day 0: Welcome + portal link\n- Day 2: Check-in + booking prompt\n- Day 7: Timetable reminder\n- Day 14: BFC family message\n- Day 30: Google review request"
+}

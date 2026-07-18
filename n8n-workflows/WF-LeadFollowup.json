@@ -1,0 +1,240 @@
+{
+  "name": "WF-LeadFollowup",
+  "nodes": [
+    {
+      "id": "wflf-01",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bfc-lead-followup",
+        "authentication": "none",
+        "options": {}
+      },
+      "webhookId": "bfc-lead-followup"
+    },
+    {
+      "id": "wflf-02",
+      "name": "Verify Secret",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-01",
+              "leftValue": "={{ $json.headers['x-webhook-secret'] }}",
+              "rightValue": "={{ $env.N8N_WEBHOOK_SECRET }}",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "wflf-03",
+      "name": "New Lead?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 200],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-mode",
+              "leftValue": "={{ $json.body.mode }}",
+              "rightValue": "new_lead",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "wflf-04",
+      "name": "Auto-Reply to Lead",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [900, 120],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $json.body.email }}",
+        "subject": "Thanks for your enquiry — Bendigo Fight Centre",
+        "message": "=Hi {{ $json.body.name }},\n\nThanks for getting in touch with Bendigo Fight Centre!\n\nWe've received your enquiry{{ $json.body.interest ? ' about ' + $json.body.interest : '' }} and Kaleb will be in touch within 24 hours.\n\nIn the meantime, feel free to check out our timetable:\nhttps://bfc-echo.vercel.app/timetable\n\nOr book a free trial class:\nhttps://bfc-echo.vercel.app/join\n\nTalk soon,\nThe BFC Team",
+        "options": {
+          "replyTo": "bendigofightcentre@gmail.com"
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail Account"
+        }
+      }
+    },
+    {
+      "id": "wflf-05",
+      "name": "Wait 3 Days",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [1120, 120],
+      "parameters": {
+        "resume": "timeInterval",
+        "unit": "days",
+        "amount": 3,
+        "options": {}
+      }
+    },
+    {
+      "id": "wflf-06",
+      "name": "Day 3 — Follow Up",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [1340, 120],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $('Webhook').item.json.body.email }}",
+        "subject": "=Still thinking about joining BFC, {{ $('Webhook').item.json.body.name }}?",
+        "message": "=Hey {{ $('Webhook').item.json.body.name }},\n\nJust following up on your enquiry from a few days ago.\n\nHave you had a chance to check out the timetable? We'd love to get you in for a free trial class — no commitment, just come and give it a go!\n\n📅 View timetable: https://bfc-echo.vercel.app/timetable\n🥊 Book free trial: https://bfc-echo.vercel.app/join\n\nAny questions, just reply or give us a call.\n\nKaleb\nBendigo Fight Centre",
+        "options": {
+          "replyTo": "bendigofightcentre@gmail.com"
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail Account"
+        }
+      }
+    },
+    {
+      "id": "wflf-07",
+      "name": "Wait 4 More Days",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [1560, 120],
+      "parameters": {
+        "resume": "timeInterval",
+        "unit": "days",
+        "amount": 4,
+        "options": {}
+      }
+    },
+    {
+      "id": "wflf-08",
+      "name": "Day 7 — Last Contact",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [1780, 120],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $('Webhook').item.json.body.email }}",
+        "subject": "=Last one from us, {{ $('Webhook').item.json.body.name }}",
+        "message": "=Hey {{ $('Webhook').item.json.body.name }},\n\nLast email from us — we don't want to hassle you!\n\nIf you're ever keen to give training a go, the door is always open:\nhttps://bfc-echo.vercel.app/join\n\nWe offer BJJ, boxing, Muay Thai, wrestling and MMA — first trial class is free.\n\nHope to see you on the mats sometime.\n\nKaleb\nBendigo Fight Centre",
+        "options": {
+          "replyTo": "bendigofightcentre@gmail.com"
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail Account"
+        }
+      }
+    },
+    {
+      "id": "wflf-09",
+      "name": "Cold Leads — Notify Kaleb",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [900, 340],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "bendigofightcentre@gmail.com",
+        "subject": "=BFC — {{ $json.body.leads_flagged || 0 }} cold leads flagged for follow-up",
+        "message": "=The daily lead follow-up check has flagged cold leads in your CRM pipeline.\n\nLeads not contacted in {{ $json.body.cold_threshold_days || 3 }} days have been automatically moved to 'follow_up_required' stage and tasks have been created.\n\nReview your pipeline:\nhttps://bfc-echo.vercel.app/leads\n\nView open tasks:\nhttps://bfc-echo.vercel.app/dashboard",
+        "options": {
+          "replyTo": "bendigofightcentre@gmail.com"
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail Account"
+        }
+      }
+    },
+    {
+      "id": "wflf-10",
+      "name": "Rejected — Bad Secret",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [680, 420],
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [{ "node": "Verify Secret", "type": "main", "index": 0 }]
+      ]
+    },
+    "Verify Secret": {
+      "main": [
+        [{ "node": "New Lead?", "type": "main", "index": 0 }],
+        [{ "node": "Rejected — Bad Secret", "type": "main", "index": 0 }]
+      ]
+    },
+    "New Lead?": {
+      "main": [
+        [{ "node": "Auto-Reply to Lead", "type": "main", "index": 0 }],
+        [{ "node": "Cold Leads — Notify Kaleb", "type": "main", "index": 0 }]
+      ]
+    },
+    "Auto-Reply to Lead": {
+      "main": [
+        [{ "node": "Wait 3 Days", "type": "main", "index": 0 }]
+      ]
+    },
+    "Wait 3 Days": {
+      "main": [
+        [{ "node": "Day 3 — Follow Up", "type": "main", "index": 0 }]
+      ]
+    },
+    "Day 3 — Follow Up": {
+      "main": [
+        [{ "node": "Wait 4 More Days", "type": "main", "index": 0 }]
+      ]
+    },
+    "Wait 4 More Days": {
+      "main": [
+        [{ "node": "Day 7 — Last Contact", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "bfc-echo"
+  },
+  "tags": [{ "name": "BFC" }],
+  "notes": "SETUP:\n1. Connect your Gmail account in Credentials\n2. Set N8N_WEBHOOK_SECRET environment variable in n8n (Settings → Variables)\n3. Copy this workflow's webhook URL and paste into N8N_LEAD_FOLLOWUP_WEBHOOK_URL in Vercel\n4. Activate the workflow\n\nTwo modes:\n\nmode=new_lead (triggered by chatbot/contact form/inbound email):\n  Payload: { lead_id, name, email, phone, source, interest, mode: 'new_lead' }\n  Sends 3-email sequence: immediate auto-reply, day 3, day 7\n\nmode=cold_leads (triggered daily by WF-ColdLeads schedule):\n  Payload: { mode: 'cold_leads', cold_threshold_days: 3, leads_flagged: N }\n  Notifies Kaleb that X leads have been flagged (tasks already created by platform)"
+}

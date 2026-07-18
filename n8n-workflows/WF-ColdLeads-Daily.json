@@ -1,0 +1,127 @@
+{
+  "name": "WF-ColdLeads-Daily",
+  "nodes": [
+    {
+      "id": "wfcl-01",
+      "name": "Daily 9am AEST",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 23 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "wfcl-02",
+      "name": "Trigger Lead Followup",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://bfc-echo.vercel.app/api/lead-followup",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "X-Webhook-Secret", "value": "={{ $env.N8N_WEBHOOK_SECRET }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"mode\": \"cold_leads\",\n  \"cold_threshold_days\": 3\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "wfcl-03",
+      "name": "Any Leads Flagged?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-01",
+              "leftValue": "={{ $json.flagged }}",
+              "rightValue": 0,
+              "operator": { "type": "number", "operation": "gt" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "wfcl-04",
+      "name": "Notify Kaleb",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [900, 200],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "bendigofightcentre@gmail.com",
+        "subject": "=BFC — {{ $json.flagged }} cold leads need follow-up today",
+        "message": "=Good morning Kaleb,\n\nThe daily lead check has flagged {{ $json.flagged }} leads that need follow-up:\n\n{{ $json.leads ? $json.leads.map(l => '• ' + l.full_name + ' (' + l.email + ') — ' + l.days_since_contact + ' days since last contact').join('\\n') : 'See platform for details.' }}\n\nTasks have been automatically created in your platform.\n\nReview leads:\nhttps://bfc-echo.vercel.app/leads\n\nView tasks:\nhttps://bfc-echo.vercel.app/dashboard",
+        "options": {
+          "replyTo": "bendigofightcentre@gmail.com"
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail Account"
+        }
+      }
+    },
+    {
+      "id": "wfcl-05",
+      "name": "Nothing to do",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [900, 400],
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "Daily 9am AEST": {
+      "main": [
+        [{ "node": "Trigger Lead Followup", "type": "main", "index": 0 }]
+      ]
+    },
+    "Trigger Lead Followup": {
+      "main": [
+        [{ "node": "Any Leads Flagged?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Any Leads Flagged?": {
+      "main": [
+        [{ "node": "Notify Kaleb", "type": "main", "index": 0 }],
+        [{ "node": "Nothing to do", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "bfc-echo"
+  },
+  "tags": [{ "name": "BFC" }],
+  "notes": "SETUP:\n1. Connect your Gmail account in Credentials\n2. Set N8N_WEBHOOK_SECRET environment variable in n8n (Settings → Variables)\n3. Activate the workflow\n\nSchedule: 0 23 * * * = 11pm UTC = 9am AEST (adjust if needed for daylight saving)\n\nThis workflow runs daily and calls the BFC platform's /api/lead-followup endpoint in cold_leads mode.\nThe platform finds leads not contacted in 3+ days, creates tasks, and returns a count.\nThis workflow then emails Kaleb a summary if any leads were flagged."
+}

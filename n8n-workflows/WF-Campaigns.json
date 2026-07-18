@@ -1,0 +1,261 @@
+{
+  "name": "WF-Campaigns",
+  "nodes": [
+    {
+      "id": "wfc-01",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bfc-campaigns",
+        "authentication": "none",
+        "options": {}
+      },
+      "webhookId": "bfc-campaigns"
+    },
+    {
+      "id": "wfc-02",
+      "name": "Verify Secret",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-01",
+              "leftValue": "={{ $json.headers['x-webhook-secret'] }}",
+              "rightValue": "={{ $env.N8N_WEBHOOK_SECRET }}",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "wfc-03",
+      "name": "Extract Recipients",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 200],
+      "parameters": {
+        "jsCode": "// Pull the campaign data from the webhook body\nconst body = $('Webhook').item.json.body;\nconst recipients = body.recipients || [];\n\n// Return each recipient enriched with campaign metadata\nreturn recipients.map(r => ({\n  json: {\n    ...r,\n    campaign_id: body.campaign_id,\n    campaign_name: body.name,\n    subject: body.subject,\n    body_email: (body.body_email || '').replace(/\\{\\{name\\}\\}/g, r.name),\n    body_sms: (body.body_sms || '').replace(/\\{\\{name\\}\\}/g, r.name),\n    channels: body.channels || ['email']\n  }\n}));"
+      }
+    },
+    {
+      "id": "wfc-04",
+      "name": "Batch (10 at a time)",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [900, 200],
+      "parameters": {
+        "batchSize": 10,
+        "options": {}
+      }
+    },
+    {
+      "id": "wfc-05",
+      "name": "Send Email?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 200],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-email",
+              "leftValue": "={{ $json.channels.includes('email') }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "wfc-06",
+      "name": "Send Campaign Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [1340, 120],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $json.email }}",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.body_email }}",
+        "options": {
+          "replyTo": "bendigofightcentre@gmail.com"
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail Account"
+        }
+      }
+    },
+    {
+      "id": "wfc-07",
+      "name": "Send SMS?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1340, 300],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-sms",
+              "leftValue": "={{ $json.channels.includes('sms') }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "wfc-08",
+      "name": "Send SMS (Twilio)",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [1560, 220],
+      "parameters": {
+        "resource": "sms",
+        "operation": "send",
+        "from": "={{ $env.TWILIO_FROM_NUMBER }}",
+        "to": "={{ $json.phone }}",
+        "message": "={{ $json.body_sms }}"
+      },
+      "credentials": {
+        "twilioApi": {
+          "id": "2",
+          "name": "Twilio Account"
+        }
+      }
+    },
+    {
+      "id": "wfc-09",
+      "name": "Rate Limit — 1s Delay",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [1780, 200],
+      "parameters": {
+        "resume": "timeInterval",
+        "unit": "seconds",
+        "amount": 1,
+        "options": {}
+      }
+    },
+    {
+      "id": "wfc-10",
+      "name": "Update Campaign Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2000, 200],
+      "parameters": {
+        "method": "POST",
+        "url": "https://bfc-echo.vercel.app/api/campaigns/complete",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "X-Webhook-Secret", "value": "={{ $env.N8N_WEBHOOK_SECRET }}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "campaign_id", "value": "={{ $('Extract Recipients').first().json.campaign_id }}" },
+            { "name": "sent_count", "value": "={{ $('Extract Recipients').all().length }}" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "wfc-11",
+      "name": "Rejected — Bad Secret",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [680, 420],
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [{ "node": "Verify Secret", "type": "main", "index": 0 }]
+      ]
+    },
+    "Verify Secret": {
+      "main": [
+        [{ "node": "Extract Recipients", "type": "main", "index": 0 }],
+        [{ "node": "Rejected — Bad Secret", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extract Recipients": {
+      "main": [
+        [{ "node": "Batch (10 at a time)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Batch (10 at a time)": {
+      "main": [
+        [
+          { "node": "Send Email?", "type": "main", "index": 0 },
+          { "node": "Send SMS?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Send Email?": {
+      "main": [
+        [{ "node": "Send Campaign Email", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Send SMS?": {
+      "main": [
+        [{ "node": "Send SMS (Twilio)", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Send Campaign Email": {
+      "main": [
+        [{ "node": "Rate Limit — 1s Delay", "type": "main", "index": 0 }]
+      ]
+    },
+    "Send SMS (Twilio)": {
+      "main": [
+        [{ "node": "Rate Limit — 1s Delay", "type": "main", "index": 0 }]
+      ]
+    },
+    "Rate Limit — 1s Delay": {
+      "main": [
+        [{ "node": "Update Campaign Status", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "bfc-echo"
+  },
+  "tags": [{ "name": "BFC" }],
+  "notes": "SETUP:\n1. Connect your Gmail account in Credentials\n2. (Optional) Connect Twilio account if using SMS\n3. Set N8N_WEBHOOK_SECRET environment variable in n8n (Settings → Variables)\n4. Copy this workflow's webhook URL and paste into N8N_CAMPAIGN_WEBHOOK_URL in Vercel\n5. Activate the workflow\n\nPayload received from /api/campaigns/send:\n{\n  campaign_id, name, subject,\n  body_email (with {{name}} merge tags),\n  body_sms (with {{name}} merge tags),\n  channels: ['email'] or ['email','sms'],\n  recipients: [{ member_id, name, email, phone }]\n}\n\n{{name}} merge tags are replaced in the Code node before sending."
+}

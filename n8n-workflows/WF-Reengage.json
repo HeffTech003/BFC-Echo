@@ -1,0 +1,220 @@
+{
+  "name": "WF-Reengage",
+  "nodes": [
+    {
+      "id": "wfr-01",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bfc-reengage",
+        "authentication": "none",
+        "options": {}
+      },
+      "webhookId": "bfc-reengage"
+    },
+    {
+      "id": "wfr-02",
+      "name": "Verify Secret",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-01",
+              "leftValue": "={{ $json.headers['x-webhook-secret'] }}",
+              "rightValue": "={{ $env.N8N_WEBHOOK_SECRET }}",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "wfr-03",
+      "name": "Split Members",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [680, 200],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
+    },
+    {
+      "id": "wfr-04",
+      "name": "Extract Member",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 200],
+      "parameters": {
+        "jsCode": "// Get members array from webhook body\nconst members = $('Webhook').item.json.body?.members || [];\nconst batch = $input.item.json;\n// When processing batch of 1, the item IS the member\nreturn [{ json: batch }];"
+      }
+    },
+    {
+      "id": "wfr-05",
+      "name": "Day 0 — We Miss You",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [1120, 200],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $json.email }}",
+        "subject": "=We miss you at BFC, {{ $json.full_name || $json.name }}",
+        "message": "=Hey {{ $json.full_name || $json.name }},\n\nWe noticed you haven't been in for a while and wanted to check in.\n\nLife gets busy — we get it. But the mats are always here when you're ready.\n\nIf there's anything that stopped you from coming in, we'd genuinely love to hear from you. Just reply to this email.\n\nYour membership can be reactivated anytime:\nhttps://bfc-echo.vercel.app/join\n\nHope to see you soon,\nBFC",
+        "options": {
+          "replyTo": "bendigofightcentre@gmail.com"
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail Account"
+        }
+      }
+    },
+    {
+      "id": "wfr-06",
+      "name": "Wait 3 Days",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [1340, 200],
+      "parameters": {
+        "resume": "timeInterval",
+        "unit": "days",
+        "amount": 3,
+        "options": {}
+      }
+    },
+    {
+      "id": "wfr-07",
+      "name": "Day 3 — Special Offer",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [1560, 200],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $('Extract Member').item.json.email }}",
+        "subject": "=We'd love to have you back, {{ $('Extract Member').item.json.full_name || $('Extract Member').item.json.name }}",
+        "message": "=Hey {{ $('Extract Member').item.json.full_name || $('Extract Member').item.json.name }},\n\nWe wanted to reach out one more time because we genuinely miss having you around.\n\nIf you're thinking about coming back, just reply to this email and we'll make it easy for you. No pressure, no hard sell — just a conversation.\n\nThe coaches and community are still here, and the door is always open.\n\nhttps://bfc-echo.vercel.app/join\n\nBFC",
+        "options": {
+          "replyTo": "bendigofightcentre@gmail.com"
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail Account"
+        }
+      }
+    },
+    {
+      "id": "wfr-08",
+      "name": "Wait 4 Days",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [1780, 200],
+      "parameters": {
+        "resume": "timeInterval",
+        "unit": "days",
+        "amount": 4,
+        "options": {}
+      }
+    },
+    {
+      "id": "wfr-09",
+      "name": "Day 7 — Final Nudge",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [2000, 200],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $('Extract Member').item.json.email }}",
+        "subject": "=Last one from us, {{ $('Extract Member').item.json.full_name || $('Extract Member').item.json.name }}",
+        "message": "=Hey {{ $('Extract Member').item.json.full_name || $('Extract Member').item.json.name }},\n\nThis is the last email from us — we don't want to fill up your inbox.\n\nIf you ever want to come back, the door is always open. We'd love to have you.\n\nhttps://bfc-echo.vercel.app/join\n\nTake care,\nBFC",
+        "options": {
+          "replyTo": "bendigofightcentre@gmail.com"
+        }
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail Account"
+        }
+      }
+    },
+    {
+      "id": "wfr-10",
+      "name": "Rejected — Bad Secret",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [680, 420],
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [{ "node": "Verify Secret", "type": "main", "index": 0 }]
+      ]
+    },
+    "Verify Secret": {
+      "main": [
+        [{ "node": "Split Members", "type": "main", "index": 0 }],
+        [{ "node": "Rejected — Bad Secret", "type": "main", "index": 0 }]
+      ]
+    },
+    "Split Members": {
+      "main": [
+        [{ "node": "Extract Member", "type": "main", "index": 0 }]
+      ]
+    },
+    "Extract Member": {
+      "main": [
+        [{ "node": "Day 0 — We Miss You", "type": "main", "index": 0 }]
+      ]
+    },
+    "Day 0 — We Miss You": {
+      "main": [
+        [{ "node": "Wait 3 Days", "type": "main", "index": 0 }]
+      ]
+    },
+    "Wait 3 Days": {
+      "main": [
+        [{ "node": "Day 3 — Special Offer", "type": "main", "index": 0 }]
+      ]
+    },
+    "Day 3 — Special Offer": {
+      "main": [
+        [{ "node": "Wait 4 Days", "type": "main", "index": 0 }]
+      ]
+    },
+    "Wait 4 Days": {
+      "main": [
+        [{ "node": "Day 7 — Final Nudge", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "bfc-echo"
+  },
+  "tags": [{ "name": "BFC" }],
+  "notes": "SETUP:\n1. Connect your Gmail account in Credentials\n2. Set N8N_WEBHOOK_SECRET environment variable in n8n (Settings → Variables)\n3. Copy this workflow's webhook URL and paste into N8N_REENGAGE_WEBHOOK_URL in Vercel\n4. Activate the workflow\n\nPayload received: { members: [{ id, full_name, email, phone }] }\n\nThis workflow sends a 3-email re-engagement sequence over 7 days:\n- Day 0: 'We miss you' email\n- Day 3: Special offer (first week back free)\n- Day 7: Final nudge\n\nThe BFC platform triggers this daily via /api/reengage, passing all lapsed members\nnot already contacted in the last 30 days."
+}

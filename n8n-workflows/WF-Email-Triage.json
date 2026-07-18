@@ -1,0 +1,190 @@
+{
+  "name": "WF-Email-Triage",
+  "nodes": [
+    {
+      "id": "wfet-01",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "parameters": {
+        "resource": "message",
+        "event": "messageReceived",
+        "filters": {}
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail Account"
+        }
+      }
+    },
+    {
+      "id": "wfet-02",
+      "name": "Send to BFC Platform",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://bfc-echo.vercel.app/api/inbound-email",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "X-Webhook-Secret", "value": "={{ $env.N8N_WEBHOOK_SECRET }}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "from", "value": "={{ $json.from }}" },
+            { "name": "subject", "value": "={{ $json.subject }}" },
+            { "name": "body", "value": "={{ $json.text || $json.snippet }}" },
+            { "name": "message_id", "value": "={{ $json.id }}" },
+            { "name": "thread_id", "value": "={{ $json.threadId }}" },
+            { "name": "received_at", "value": "={{ $json.date }}" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "wfet-03",
+      "name": "High Priority?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-01",
+              "leftValue": "={{ $json.priority }}",
+              "rightValue": "high",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "wfet-04",
+      "name": "Alert Kaleb — High Priority",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [900, 200],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "bendigofightcentre@gmail.com",
+        "subject": "=🚨 HIGH PRIORITY EMAIL: {{ $('Send to BFC Platform').item.json.category }} — {{ $('Gmail Trigger').item.json.subject }}",
+        "message": "=A high-priority email has been received and classified by the BFC AI triage system.\n\n📧 From: {{ $('Gmail Trigger').item.json.from }}\n📌 Subject: {{ $('Gmail Trigger').item.json.subject }}\n🏷️ Category: {{ $('Send to BFC Platform').item.json.category }}\n⚡ Priority: {{ $('Send to BFC Platform').item.json.priority }}\n🔔 Escalate: {{ $('Send to BFC Platform').item.json.escalate }}\n\nReview and respond in the email triage log:\nhttps://bfc-echo.vercel.app/email-triage",
+        "options": {}
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail Account"
+        }
+      }
+    },
+    {
+      "id": "wfet-05",
+      "name": "Lead / Trial?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 400],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-02",
+              "leftValue": "={{ $json.category }}",
+              "rightValue": "lead",
+              "operator": { "type": "string", "operation": "equals" }
+            },
+            {
+              "id": "cond-03",
+              "leftValue": "={{ $json.category }}",
+              "rightValue": "trial_class_request",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "wfet-06",
+      "name": "Notify — New Lead from Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [1120, 320],
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "bendigofightcentre@gmail.com",
+        "subject": "=📥 New lead from email: {{ $('Gmail Trigger').item.json.from }}",
+        "message": "=The BFC platform has automatically created a CRM lead from this email.\n\n📧 From: {{ $('Gmail Trigger').item.json.from }}\n📌 Subject: {{ $('Gmail Trigger').item.json.subject }}\n🏷️ Category: {{ $('Send to BFC Platform').item.json.category }}\n\nView in leads pipeline:\nhttps://bfc-echo.vercel.app/leads",
+        "options": {}
+      },
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "1",
+          "name": "Gmail Account"
+        }
+      }
+    },
+    {
+      "id": "wfet-07",
+      "name": "Done",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1120, 500],
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [{ "node": "Send to BFC Platform", "type": "main", "index": 0 }]
+      ]
+    },
+    "Send to BFC Platform": {
+      "main": [
+        [
+          { "node": "High Priority?", "type": "main", "index": 0 },
+          { "node": "Lead / Trial?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "High Priority?": {
+      "main": [
+        [{ "node": "Alert Kaleb — High Priority", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Lead / Trial?": {
+      "main": [
+        [{ "node": "Notify — New Lead from Email", "type": "main", "index": 0 }],
+        [{ "node": "Done", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "bfc-echo"
+  },
+  "tags": [{ "name": "BFC" }],
+  "notes": "SETUP:\n1. Connect your Gmail account in Credentials\n2. Set N8N_WEBHOOK_SECRET environment variable in n8n (Settings → Variables)\n3. Activate the workflow\n\nThis workflow watches Gmail for new emails, sends them to the BFC platform for AI classification,\nand alerts Kaleb for high-priority emails or new leads."
+}
