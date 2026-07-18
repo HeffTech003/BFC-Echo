@@ -5,6 +5,7 @@ import { logAudit } from "@/lib/audit";
 import { AppShell } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -48,10 +49,12 @@ export default async function MatchQueuePage() {
 
   const suggested = suggestedRes.data ?? [];
   const unmatched = unmatchedRes.data ?? [];
+  const highConfidence = suggested.filter((r) => (r.match_confidence ?? 0) >= 0.9).length;
+  const lowConfidence  = suggested.filter((r) => (r.match_confidence ?? 0) < 0.8).length;
 
   return (
     <AppShell profile={profile}>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Duplicate / Legacy Match Queue</h1>
           <p className="text-muted-foreground text-sm">
@@ -62,6 +65,38 @@ export default async function MatchQueuePage() {
         <form action={runMatcher}>
           <Button type="submit">Run matcher</Button>
         </form>
+      </div>
+
+      {/* Stat cards */}
+      <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+        <Card className={`gap-2 py-4 border-l-4 ${suggested.length > 0 ? "border-l-warning" : "border-l-border"}`}>
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{suggested.length}</div>
+            <div className="mt-1 text-sm font-medium">Awaiting review</div>
+            <div className="text-xs text-muted-foreground mt-0.5">suggested matches</div>
+          </CardContent>
+        </Card>
+        <Card className={`gap-2 py-4 border-l-4 ${unmatched.length > 0 ? "border-l-destructive" : "border-l-border"}`}>
+          <CardContent className="px-4">
+            <div className={`text-3xl font-bold tabular-nums ${unmatched.length > 0 ? "text-destructive" : ""}`}>{unmatched.length}</div>
+            <div className="mt-1 text-sm font-medium">Unmatched records</div>
+            <div className="text-xs text-muted-foreground mt-0.5">no candidate found</div>
+          </CardContent>
+        </Card>
+        <Card className="gap-2 py-4 border-l-4 border-l-success">
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{highConfidence}</div>
+            <div className="mt-1 text-sm font-medium">High confidence</div>
+            <div className="text-xs text-muted-foreground mt-0.5">≥90% match score</div>
+          </CardContent>
+        </Card>
+        <Card className={`gap-2 py-4 border-l-4 ${lowConfidence > 0 ? "border-l-warning" : "border-l-border"}`}>
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{lowConfidence}</div>
+            <div className="mt-1 text-sm font-medium">Low confidence</div>
+            <div className="text-xs text-muted-foreground mt-0.5">&lt;80% — review carefully</div>
+          </CardContent>
+        </Card>
       </div>
 
       <h2 className="mb-2 font-medium">

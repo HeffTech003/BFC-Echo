@@ -61,12 +61,48 @@ export default async function TimetablePage() {
     byDay.set(c.day_of_week, day);
   }
 
+  const totalSessions = active.reduce((s, c) => s + 1, 0);
+  const assignedCoaches = new Set(active.filter((c) => c.coach_id).map((c) => c.coach_id)).size;
+  const typeCount = active.filter((c) => c.class_type === "group").length;
+
   return (
     <AppShell profile={profile}>
       <h1 className="mb-1 text-2xl font-semibold">Class Timetable</h1>
-      <p className="text-muted-foreground mb-6 text-sm">
-        Weekly recurring schedule. {active.length} active classes across {byDay.size} days.
+      <p className="text-muted-foreground mb-4 text-sm">
+        Weekly recurring schedule.
       </p>
+
+      {/* Stat cards */}
+      <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+        <Card className={`gap-2 py-4 border-l-4 ${totalSessions > 0 ? "border-l-success" : "border-l-border"}`}>
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{totalSessions}</div>
+            <div className="mt-1 text-sm font-medium">Active classes</div>
+            <div className="text-xs text-muted-foreground mt-0.5">per week</div>
+          </CardContent>
+        </Card>
+        <Card className="gap-2 py-4 border-l-4 border-l-primary">
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{byDay.size}</div>
+            <div className="mt-1 text-sm font-medium">Training days</div>
+            <div className="text-xs text-muted-foreground mt-0.5">days with classes</div>
+          </CardContent>
+        </Card>
+        <Card className="gap-2 py-4 border-l-4 border-l-border">
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{typeCount}</div>
+            <div className="mt-1 text-sm font-medium">Group classes</div>
+            <div className="text-xs text-muted-foreground mt-0.5">of {totalSessions} total</div>
+          </CardContent>
+        </Card>
+        <Card className={`gap-2 py-4 border-l-4 ${assignedCoaches > 0 ? "border-l-border" : "border-l-warning"}`}>
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{assignedCoaches}</div>
+            <div className="mt-1 text-sm font-medium">Coaches assigned</div>
+            <div className="text-xs text-muted-foreground mt-0.5">{active.length - assignedCoaches > 0 ? `${active.filter(c => !c.coach_id).length} unassigned` : "all assigned"}</div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Weekly grid */}
       <div className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

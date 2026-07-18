@@ -147,7 +147,7 @@ export function MembersTable({ members: rows }: { members: MemberRow[] }) {
                   : "bg-transparent text-muted-foreground border-border hover:bg-muted"
               )}
             >
-              {s === "all" ? "All status" : s === "non_attending" ? "Non-Attending" : s}
+              {s === "all" ? "All status" : s.charAt(0).toUpperCase() + s.slice(1)}
             </button>
           ))}
         </div>

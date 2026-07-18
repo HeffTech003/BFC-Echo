@@ -54,12 +54,51 @@ export default async function PayrollPage() {
   const runs = runsRes.data ?? [];
   const coaches = coachesRes.data ?? [];
 
+  const pendingRuns = runs.filter((r) => ["draft", "under_review"].includes(r.status));
+  const paidRuns    = runs.filter((r) => r.status === "paid");
+  const totalPaid   = paidRuns.reduce((s, r) => {
+    const items = (r.items ?? []) as { gross_amount: number }[];
+    return s + items.reduce((si, i) => si + Number(i.gross_amount), 0);
+  }, 0);
+
   return (
     <AppShell profile={profile}>
       <h1 className="mb-1 text-2xl font-semibold">Payroll</h1>
-      <p className="text-muted-foreground mb-6 text-sm">
+      <p className="text-muted-foreground mb-4 text-sm">
         Calculate coach pay from logged sessions → review → approve → send to Xero.
       </p>
+
+      {/* Stat cards */}
+      <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+        <Card className="gap-2 py-4 border-l-4 border-l-border">
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{runs.length}</div>
+            <div className="mt-1 text-sm font-medium">Pay runs</div>
+            <div className="text-xs text-muted-foreground mt-0.5">all time</div>
+          </CardContent>
+        </Card>
+        <Card className={`gap-2 py-4 border-l-4 ${pendingRuns.length > 0 ? "border-l-warning" : "border-l-border"}`}>
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{pendingRuns.length}</div>
+            <div className="mt-1 text-sm font-medium">Awaiting approval</div>
+            <div className="text-xs text-muted-foreground mt-0.5">draft or under review</div>
+          </CardContent>
+        </Card>
+        <Card className="gap-2 py-4 border-l-4 border-l-success">
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{formatMoney(totalPaid)}</div>
+            <div className="mt-1 text-sm font-medium">Total paid out</div>
+            <div className="text-xs text-muted-foreground mt-0.5">{paidRuns.length} paid runs</div>
+          </CardContent>
+        </Card>
+        <Card className="gap-2 py-4 border-l-4 border-l-primary">
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{coaches.length}</div>
+            <div className="mt-1 text-sm font-medium">Active coaches</div>
+            <div className="text-xs text-muted-foreground mt-0.5">staff members</div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Create pay run */}
       {isOwner && (

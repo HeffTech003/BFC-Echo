@@ -55,28 +55,36 @@ export default async function BankFeedPage() {
 
         {/* Summary cards */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="pb-1"><CardTitle className="text-sm">Inflow (30d)</CardTitle></CardHeader>
-            <CardContent><p className="text-2xl font-bold text-green-600">+${(inflow30 / 100).toFixed(2)}</p></CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-1"><CardTitle className="text-sm">Outflow (30d)</CardTitle></CardHeader>
-            <CardContent><p className="text-2xl font-bold text-red-600">−${(outflow30 / 100).toFixed(2)}</p></CardContent>
-          </Card>
-          <Card className={net30 >= 0 ? "border-green-200" : "border-red-200"}>
-            <CardHeader className="pb-1"><CardTitle className="text-sm">Net (30d)</CardTitle></CardHeader>
-            <CardContent>
-              <p className={`text-2xl font-bold ${net30 >= 0 ? "text-green-600" : "text-red-600"}`}>
-                {net30 >= 0 ? "+" : "−"}${(Math.abs(net30) / 100).toFixed(2)}
-              </p>
+          <Card className="gap-2 py-4 border-l-4 border-l-success">
+            <CardContent className="px-4">
+              <div className="text-3xl font-bold tabular-nums">${(inflow30 / 100).toFixed(0)}</div>
+              <div className="mt-1 text-sm font-medium">Inflow (30d)</div>
+              <div className="text-xs text-muted-foreground mt-0.5">cash received</div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="pb-1"><CardTitle className="text-sm">Net (90d)</CardTitle></CardHeader>
-            <CardContent>
-              <p className={`text-2xl font-bold ${inflow90 >= outflow90 ? "text-green-600" : "text-red-600"}`}>
-                {inflow90 >= outflow90 ? "+" : "−"}${(Math.abs(inflow90 - outflow90) / 100).toFixed(2)}
-              </p>
+          <Card className="gap-2 py-4 border-l-4 border-l-destructive">
+            <CardContent className="px-4">
+              <div className="text-3xl font-bold tabular-nums">${(outflow30 / 100).toFixed(0)}</div>
+              <div className="mt-1 text-sm font-medium">Outflow (30d)</div>
+              <div className="text-xs text-muted-foreground mt-0.5">cash out</div>
+            </CardContent>
+          </Card>
+          <Card className={`gap-2 py-4 border-l-4 ${net30 >= 0 ? "border-l-success" : "border-l-destructive"}`}>
+            <CardContent className="px-4">
+              <div className={`text-3xl font-bold tabular-nums ${net30 >= 0 ? "text-success-foreground" : "text-destructive"}`}>
+                {net30 >= 0 ? "+" : "−"}${(Math.abs(net30) / 100).toFixed(0)}
+              </div>
+              <div className="mt-1 text-sm font-medium">Net (30d)</div>
+              <div className="text-xs text-muted-foreground mt-0.5">inflow minus outflow</div>
+            </CardContent>
+          </Card>
+          <Card className={`gap-2 py-4 border-l-4 ${inflow90 >= outflow90 ? "border-l-success" : "border-l-destructive"}`}>
+            <CardContent className="px-4">
+              <div className={`text-3xl font-bold tabular-nums ${inflow90 >= outflow90 ? "text-success-foreground" : "text-destructive"}`}>
+                {inflow90 >= outflow90 ? "+" : "−"}${(Math.abs(inflow90 - outflow90) / 100).toFixed(0)}
+              </div>
+              <div className="mt-1 text-sm font-medium">Net (90d)</div>
+              <div className="text-xs text-muted-foreground mt-0.5">3-month trend</div>
             </CardContent>
           </Card>
         </div>

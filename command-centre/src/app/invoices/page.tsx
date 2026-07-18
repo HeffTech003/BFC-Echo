@@ -4,6 +4,7 @@ import { logAudit } from "@/lib/audit";
 import { AppShell } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -43,14 +44,52 @@ export default async function InvoicesPage() {
   const open = invoices.filter((i) => openStatuses.includes(i.status));
   const done = invoices.filter((i) => !openStatuses.includes(i.status));
   const today = isoToday();
+  const overdue = open.filter((i) => i.due_date && i.due_date <= today);
+  const overdueAmount = overdue.reduce((s, i) => s + (Number(i.amount) || 0), 0);
+  const pendingValue = open.reduce((s, i) => s + (Number(i.amount) || 0), 0);
+  const retained = done.filter((i) => i.status === "paid").length;
 
   return (
     <AppShell profile={profile}>
       <h1 className="mb-1 text-2xl font-semibold">Supplier Invoices</h1>
-      <p className="text-muted-foreground mb-6 text-sm">
+      <p className="text-muted-foreground mb-4 text-sm">
         From the Gmail invoice scanner. Marking &ldquo;paid&rdquo; records that a human
         paid it via the bank/Xero — the platform never makes payments.
       </p>
+
+      {/* Stat cards */}
+      <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+        <Card className={`gap-2 py-4 border-l-4 ${open.length > 0 ? "border-l-warning" : "border-l-border"}`}>
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{open.length}</div>
+            <div className="mt-1 text-sm font-medium">Needs attention</div>
+            <div className="text-xs text-muted-foreground mt-0.5">{formatMoney(pendingValue, "AUD")} total</div>
+          </CardContent>
+        </Card>
+        <Card className={`gap-2 py-4 border-l-4 ${overdue.length > 0 ? "border-l-destructive" : "border-l-border"}`}>
+          <CardContent className="px-4">
+            <div className={`text-3xl font-bold tabular-nums ${overdue.length > 0 ? "text-destructive" : ""}`}>
+              {overdue.length}
+            </div>
+            <div className="mt-1 text-sm font-medium">Overdue</div>
+            <div className="text-xs text-muted-foreground mt-0.5">{formatMoney(overdueAmount, "AUD")} at risk</div>
+          </CardContent>
+        </Card>
+        <Card className="gap-2 py-4 border-l-4 border-l-success">
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{retained}</div>
+            <div className="mt-1 text-sm font-medium">Paid</div>
+            <div className="text-xs text-muted-foreground mt-0.5">marked paid by staff</div>
+          </CardContent>
+        </Card>
+        <Card className="gap-2 py-4 border-l-4 border-l-border">
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{invoices.length}</div>
+            <div className="mt-1 text-sm font-medium">Total scanned</div>
+            <div className="text-xs text-muted-foreground mt-0.5">all time</div>
+          </CardContent>
+        </Card>
+      </div>
 
       <h2 className="mb-2 font-medium">
         Needs attention <span className="text-muted-foreground">({open.length})</span>

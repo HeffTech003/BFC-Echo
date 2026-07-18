@@ -5,6 +5,7 @@ import { logAudit } from "@/lib/audit";
 import { AppShell } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -43,6 +44,9 @@ export default async function CancellationsPage() {
   const requests = data ?? [];
   const open = requests.filter((r) => ["new", "in_progress"].includes(r.status));
   const closed = requests.filter((r) => !["new", "in_progress"].includes(r.status));
+  const newCount      = requests.filter((r) => r.status === "new").length;
+  const inProgress    = requests.filter((r) => r.status === "in_progress").length;
+  const retained      = requests.filter((r) => r.status === "retained").length;
 
   const renderRow = (r: (typeof requests)[number]) => {
     const member = Array.isArray(r.member) ? r.member[0] : r.member;
@@ -122,10 +126,42 @@ export default async function CancellationsPage() {
   return (
     <AppShell profile={profile}>
       <h1 className="mb-1 text-2xl font-semibold">Cancellations & Pauses</h1>
-      <p className="text-muted-foreground mb-6 text-sm">
+      <p className="text-muted-foreground mb-4 text-sm">
         Intake from the chatbot, web form, email and staff. Recording an outcome here is
         bookkeeping — the actual change is made by a human in the source system.
       </p>
+
+      {/* Stat cards */}
+      <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+        <Card className={`gap-2 py-4 border-l-4 ${newCount > 0 ? "border-l-destructive" : "border-l-border"}`}>
+          <CardContent className="px-4">
+            <div className={`text-3xl font-bold tabular-nums ${newCount > 0 ? "text-destructive" : ""}`}>{newCount}</div>
+            <div className="mt-1 text-sm font-medium">New requests</div>
+            <div className="text-xs text-muted-foreground mt-0.5">not yet actioned</div>
+          </CardContent>
+        </Card>
+        <Card className={`gap-2 py-4 border-l-4 ${inProgress > 0 ? "border-l-warning" : "border-l-border"}`}>
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{inProgress}</div>
+            <div className="mt-1 text-sm font-medium">In progress</div>
+            <div className="text-xs text-muted-foreground mt-0.5">being handled</div>
+          </CardContent>
+        </Card>
+        <Card className="gap-2 py-4 border-l-4 border-l-success">
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{retained}</div>
+            <div className="mt-1 text-sm font-medium">Retained</div>
+            <div className="text-xs text-muted-foreground mt-0.5">members who stayed</div>
+          </CardContent>
+        </Card>
+        <Card className="gap-2 py-4 border-l-4 border-l-border">
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{requests.length}</div>
+            <div className="mt-1 text-sm font-medium">Total requests</div>
+            <div className="text-xs text-muted-foreground mt-0.5">all time</div>
+          </CardContent>
+        </Card>
+      </div>
 
       <h2 className="mb-2 font-medium">
         Open <span className="text-muted-foreground">({open.length})</span>
