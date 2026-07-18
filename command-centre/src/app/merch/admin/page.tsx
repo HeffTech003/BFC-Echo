@@ -61,16 +61,34 @@ export default async function MerchAdminPage() {
 
         {/* Summary */}
         <div className="grid gap-4 sm:grid-cols-4">
-          <Card><CardHeader className="pb-1"><CardTitle className="text-sm">Products</CardTitle></CardHeader>
-            <CardContent><p className="text-2xl font-bold">{totalProducts}</p></CardContent></Card>
-          <Card className={lowStock > 0 ? "border-yellow-300" : ""}>
-            <CardHeader className="pb-1"><CardTitle className="text-sm">Low Stock (≤3)</CardTitle></CardHeader>
-            <CardContent><p className="text-2xl font-bold">{lowStock}</p></CardContent></Card>
-          <Card className={pendingOrders > 0 ? "border-blue-300" : ""}>
-            <CardHeader className="pb-1"><CardTitle className="text-sm">Pending Orders</CardTitle></CardHeader>
-            <CardContent><p className="text-2xl font-bold">{pendingOrders}</p></CardContent></Card>
-          <Card><CardHeader className="pb-1"><CardTitle className="text-sm">Revenue</CardTitle></CardHeader>
-            <CardContent><p className="text-2xl font-bold">${(revenueCents / 100).toFixed(2)}</p></CardContent></Card>
+          <Card className="gap-2 py-4 border-l-4 border-l-border">
+            <CardContent className="px-4">
+              <div className="text-3xl font-bold tabular-nums">{totalProducts}</div>
+              <div className="mt-1 text-sm font-medium">Products</div>
+              <div className="text-xs text-muted-foreground mt-0.5">active in store</div>
+            </CardContent>
+          </Card>
+          <Card className={`gap-2 py-4 border-l-4 ${lowStock > 0 ? "border-l-warning" : "border-l-border"}`}>
+            <CardContent className="px-4">
+              <div className="text-3xl font-bold tabular-nums">{lowStock}</div>
+              <div className="mt-1 text-sm font-medium">Low stock</div>
+              <div className="text-xs text-muted-foreground mt-0.5">≤3 units remaining</div>
+            </CardContent>
+          </Card>
+          <Card className={`gap-2 py-4 border-l-4 ${pendingOrders > 0 ? "border-l-primary" : "border-l-border"}`}>
+            <CardContent className="px-4">
+              <div className="text-3xl font-bold tabular-nums">{pendingOrders}</div>
+              <div className="mt-1 text-sm font-medium">Pending orders</div>
+              <div className="text-xs text-muted-foreground mt-0.5">need fulfilment</div>
+            </CardContent>
+          </Card>
+          <Card className="gap-2 py-4 border-l-4 border-l-success">
+            <CardContent className="px-4">
+              <div className="text-3xl font-bold tabular-nums">${(revenueCents / 100).toFixed(0)}</div>
+              <div className="mt-1 text-sm font-medium">Revenue</div>
+              <div className="text-xs text-muted-foreground mt-0.5">total orders value</div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Add product */}

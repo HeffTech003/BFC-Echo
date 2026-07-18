@@ -117,11 +117,43 @@ export default async function ActionsQueuePage() {
   return (
     <AppShell profile={profile}>
       <h1 className="mb-1 text-2xl font-semibold">Controlled Actions</h1>
-      <p className="text-muted-foreground mb-6 text-sm">
+      <p className="text-muted-foreground mb-4 text-sm">
         The only write path back into source systems: request → human approval → n8n
         executes via the supported API → full result recorded. High-risk actions
         (cancellations, pauses, refunds, bulk sends) require Owner/Director approval.
       </p>
+
+      {/* Stat cards */}
+      <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+        <Card className={`gap-2 py-4 border-l-4 ${pending.length > 0 ? "border-l-warning" : "border-l-border"}`}>
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{pending.length}</div>
+            <div className="mt-1 text-sm font-medium">Pending approval</div>
+            <div className="text-xs text-muted-foreground mt-0.5">awaiting decision</div>
+          </CardContent>
+        </Card>
+        <Card className={`gap-2 py-4 border-l-4 ${queued.length > 0 ? "border-l-primary" : "border-l-border"}`}>
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{queued.length}</div>
+            <div className="mt-1 text-sm font-medium">Queued for n8n</div>
+            <div className="text-xs text-muted-foreground mt-0.5">approved, awaiting execution</div>
+          </CardContent>
+        </Card>
+        <Card className={`gap-2 py-4 border-l-4 ${failed.length > 0 ? "border-l-destructive" : "border-l-border"}`}>
+          <CardContent className="px-4">
+            <div className={`text-3xl font-bold tabular-nums ${failed.length > 0 ? "text-destructive" : ""}`}>{failed.length}</div>
+            <div className="mt-1 text-sm font-medium">Failed</div>
+            <div className="text-xs text-muted-foreground mt-0.5">n8n execution error</div>
+          </CardContent>
+        </Card>
+        <Card className="gap-2 py-4 border-l-4 border-l-border">
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{history.length}</div>
+            <div className="mt-1 text-sm font-medium">Completed</div>
+            <div className="text-xs text-muted-foreground mt-0.5">applied or rejected</div>
+          </CardContent>
+        </Card>
+      </div>
 
       <Card className="mb-10">
         <CardHeader>

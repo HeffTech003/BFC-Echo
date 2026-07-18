@@ -43,12 +43,37 @@ export default async function EmailReviewPage() {
   return (
     <AppShell profile={profile}>
       <h1 className="mb-1 text-2xl font-semibold">Email Review</h1>
-      <p className="text-muted-foreground mb-6 text-sm">
+      <p className="text-muted-foreground mb-4 text-sm">
         Suggested classifications from the inbox scanner. Approving lets n8n apply the
         label or create a <em>draft</em> reply — nothing is ever sent automatically, and
         protected categories (complaints, legal, safeguarding, cancellations,
         chargebacks) can never be archived.
       </p>
+
+      {/* Stat cards */}
+      <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-3">
+        <Card className={`gap-2 py-4 border-l-4 ${pending.length > 0 ? "border-l-warning" : "border-l-border"}`}>
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{pending.length}</div>
+            <div className="mt-1 text-sm font-medium">Awaiting review</div>
+            <div className="text-xs text-muted-foreground mt-0.5">AI suggestions to check</div>
+          </CardContent>
+        </Card>
+        <Card className="gap-2 py-4 border-l-4 border-l-success">
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{recent.filter(r => r.status === "approved").length}</div>
+            <div className="mt-1 text-sm font-medium">Approved</div>
+            <div className="text-xs text-muted-foreground mt-0.5">recent decisions</div>
+          </CardContent>
+        </Card>
+        <Card className="gap-2 py-4 border-l-4 border-l-border">
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{recent.length}</div>
+            <div className="mt-1 text-sm font-medium">Recent decisions</div>
+            <div className="text-xs text-muted-foreground mt-0.5">last 15 reviewed</div>
+          </CardContent>
+        </Card>
+      </div>
 
       <h2 className="mb-3 font-medium">
         Awaiting review <span className="text-muted-foreground">({pending.length})</span>

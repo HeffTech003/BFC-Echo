@@ -173,55 +173,41 @@ export default async function RetentionPage() {
 
       {/* ── KPI row ──────────────────────────────────────────────────────── */}
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Card className="py-4 gap-1">
+        <Card className={`py-4 gap-2 border-l-4 ${parseFloat(churnRate) > 5 ? "border-l-destructive" : "border-l-success"}`}>
           <CardContent className="px-4">
-            <div className={cn(
-              "text-2xl font-semibold tabular-nums",
-              parseFloat(churnRate) > 5 ? "text-destructive" : "text-foreground"
-            )}>
+            <div className={`text-3xl font-bold tabular-nums ${parseFloat(churnRate) > 5 ? "text-destructive" : ""}`}>
               {churnRate}%
             </div>
-            <div className="text-sm font-medium mt-0.5">Churn rate</div>
-            <div className="text-xs text-muted-foreground">cancellations last 30d</div>
+            <div className="text-sm font-medium mt-1">Churn rate</div>
+            <div className="text-xs text-muted-foreground mt-0.5">cancellations last 30d</div>
           </CardContent>
         </Card>
 
-        <Card className="py-4 gap-1">
+        <Card className={`py-4 gap-2 border-l-4 ${netGrowth30 >= 0 ? "border-l-success" : "border-l-destructive"}`}>
           <CardContent className="px-4">
-            <div className={cn(
-              "text-2xl font-semibold tabular-nums",
-              netGrowth30 >= 0 ? "text-success-foreground" : "text-destructive"
-            )}>
+            <div className={`text-3xl font-bold tabular-nums ${netGrowth30 >= 0 ? "" : "text-destructive"}`}>
               {netGrowth30 >= 0 ? "+" : ""}{netGrowth30}
             </div>
-            <div className="text-sm font-medium mt-0.5">Net growth</div>
-            <div className="text-xs text-muted-foreground">{newLast30} joins · {cancelledLast30} cancels (30d)</div>
+            <div className="text-sm font-medium mt-1">Net growth</div>
+            <div className="text-xs text-muted-foreground mt-0.5">{newLast30} joins · {cancelledLast30} cancels (30d)</div>
           </CardContent>
         </Card>
 
-        <Card className="py-4 gap-1">
+        <Card className={`py-4 gap-2 border-l-4 ${revenueAtRisk > 0 ? "border-l-warning" : "border-l-border"}`}>
           <CardContent className="px-4">
-            <div className={cn(
-              "text-2xl font-semibold tabular-nums",
-              revenueAtRisk > 0 ? "text-warning-foreground" : "text-foreground"
-            )}>
+            <div className="text-3xl font-bold tabular-nums">
               {formatMoney(revenueAtRisk)}
             </div>
-            <div className="text-sm font-medium mt-0.5">Revenue at risk</div>
-            <div className="text-xs text-muted-foreground">{outstandingInvoices.length} overdue invoices</div>
+            <div className="text-sm font-medium mt-1">Revenue at risk</div>
+            <div className="text-xs text-muted-foreground mt-0.5">{outstandingInvoices.length} overdue invoices</div>
           </CardContent>
         </Card>
 
-        <Card className="py-4 gap-1">
+        <Card className={`py-4 gap-2 border-l-4 ${pendingCancellations > 0 ? "border-l-warning" : "border-l-border"}`}>
           <CardContent className="px-4">
-            <div className={cn(
-              "text-2xl font-semibold tabular-nums",
-              pendingCancellations > 0 ? "text-warning-foreground" : "text-foreground"
-            )}>
-              {pendingCancellations}
-            </div>
-            <div className="text-sm font-medium mt-0.5">Pending reviews</div>
-            <div className="text-xs text-muted-foreground">cancellation requests</div>
+            <div className="text-3xl font-bold tabular-nums">{pendingCancellations}</div>
+            <div className="text-sm font-medium mt-1">Pending reviews</div>
+            <div className="text-xs text-muted-foreground mt-0.5">cancellation requests</div>
           </CardContent>
         </Card>
       </div>

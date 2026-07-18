@@ -51,19 +51,32 @@ export default async function EmailTriageLogPage() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-3">
-          <Card><CardHeader className="pb-1"><CardTitle className="text-sm">Total Logged</CardTitle></CardHeader>
-            <CardContent><p className="text-2xl font-bold">{logs?.length ?? 0}</p></CardContent></Card>
-          <Card className={pending > 0 ? "border-yellow-300" : ""}>
-            <CardHeader className="pb-1"><CardTitle className="text-sm">Pending Action</CardTitle></CardHeader>
-            <CardContent><p className="text-2xl font-bold">{pending}</p></CardContent></Card>
-          <Card className={escalated > 0 ? "border-red-300" : ""}>
-            <CardHeader className="pb-1"><CardTitle className="text-sm">Needs Escalation</CardTitle></CardHeader>
-            <CardContent><p className="text-2xl font-bold text-red-600">{escalated}</p></CardContent></Card>
+          <Card className="gap-2 py-4 border-l-4 border-l-border">
+            <CardContent className="px-4">
+              <div className="text-3xl font-bold tabular-nums">{logs?.length ?? 0}</div>
+              <div className="mt-1 text-sm font-medium">Total logged</div>
+              <div className="text-xs text-muted-foreground mt-0.5">all AI-classified emails</div>
+            </CardContent>
+          </Card>
+          <Card className={`gap-2 py-4 border-l-4 ${pending > 0 ? "border-l-warning" : "border-l-border"}`}>
+            <CardContent className="px-4">
+              <div className="text-3xl font-bold tabular-nums">{pending}</div>
+              <div className="mt-1 text-sm font-medium">Pending action</div>
+              <div className="text-xs text-muted-foreground mt-0.5">awaiting staff response</div>
+            </CardContent>
+          </Card>
+          <Card className={`gap-2 py-4 border-l-4 ${escalated > 0 ? "border-l-destructive" : "border-l-border"}`}>
+            <CardContent className="px-4">
+              <div className={`text-3xl font-bold tabular-nums ${escalated > 0 ? "text-destructive" : ""}`}>{escalated}</div>
+              <div className="mt-1 text-sm font-medium">Needs escalation</div>
+              <div className="text-xs text-muted-foreground mt-0.5">flagged by AI</div>
+            </CardContent>
+          </Card>
         </div>
 
         <div className="space-y-3">
           {(logs ?? []).map((log) => (
-            <Card key={log.id} className={log.escalate && !log.actioned_at ? "border-red-200" : ""}>
+            <Card key={log.id} className={log.escalate && !log.actioned_at ? "border-l-4 border-l-destructive" : ""}>
               <CardContent className="p-4 space-y-2">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">

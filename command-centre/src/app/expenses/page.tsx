@@ -96,29 +96,27 @@ export default async function ExpensesPage() {
 
       {/* KPI row */}
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
-        <Card className="py-4 gap-1">
+        <Card className="py-4 gap-2 border-l-4 border-l-border">
           <CardContent className="px-4">
-            <div className="text-2xl font-semibold tabular-nums">{formatMoney(totalPaidFY)}</div>
-            <div className="text-sm font-medium mt-0.5">Paid this FY</div>
-            <div className="text-xs text-muted-foreground">from {fyS}</div>
+            <div className="text-3xl font-bold tabular-nums">{formatMoney(totalPaidFY)}</div>
+            <div className="text-sm font-medium mt-1">Paid this FY</div>
+            <div className="text-xs text-muted-foreground mt-0.5">from {fyS}</div>
           </CardContent>
         </Card>
-        <Card className="py-4 gap-1">
+        <Card className={`py-4 gap-2 border-l-4 ${totalUnpaid > 0 ? "border-l-warning" : "border-l-border"}`}>
           <CardContent className="px-4">
-            <div className={cn("text-2xl font-semibold tabular-nums", totalUnpaid > 0 ? "text-warning-foreground" : "text-foreground")}>
-              {formatMoney(totalUnpaid)}
-            </div>
-            <div className="text-sm font-medium mt-0.5">Outstanding</div>
-            <div className="text-xs text-muted-foreground">awaiting payment</div>
+            <div className="text-3xl font-bold tabular-nums">{formatMoney(totalUnpaid)}</div>
+            <div className="text-sm font-medium mt-1">Outstanding</div>
+            <div className="text-xs text-muted-foreground mt-0.5">awaiting payment</div>
           </CardContent>
         </Card>
-        <Card className="py-4 gap-1">
+        <Card className={`py-4 gap-2 border-l-4 ${overdueTotal > 0 ? "border-l-destructive" : "border-l-border"}`}>
           <CardContent className="px-4">
-            <div className={cn("text-2xl font-semibold tabular-nums", overdueTotal > 0 ? "text-destructive" : "text-foreground")}>
+            <div className={`text-3xl font-bold tabular-nums ${overdueTotal > 0 ? "text-destructive" : ""}`}>
               {formatMoney(overdueTotal)}
             </div>
-            <div className="text-sm font-medium mt-0.5">Overdue</div>
-            <div className="text-xs text-muted-foreground">{overdue.length} bills past due date</div>
+            <div className="text-sm font-medium mt-1">Overdue</div>
+            <div className="text-xs text-muted-foreground mt-0.5">{overdue.length} bills past due date</div>
           </CardContent>
         </Card>
       </div>
