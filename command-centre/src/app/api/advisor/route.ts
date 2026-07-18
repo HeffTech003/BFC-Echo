@@ -4,6 +4,19 @@ import { requireProfile } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function auFyStart(yearsAgo = 0): string {
+  const now = new Date();
+  const fyYear = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+  return `${fyYear - yearsAgo}-07-01`;
+}
+function fyLabel(dateStr: string): string {
+  const d = new Date(dateStr);
+  const y = d.getMonth() >= 6 ? d.getFullYear() : d.getFullYear() - 1;
+  return `FY${y}-${String(y + 1).slice(2)}`;
+}
+function fmtMoney(n: number) { return `$${n.toLocaleString("en-AU", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`; }
+
 // ── Build live platform context ───────────────────────────────────────────────
 async function buildContext(): Promise<string> {
   try {
@@ -11,6 +24,7 @@ async function buildContext(): Promise<string> {
     const today = new Date().toISOString().slice(0, 10);
     const thirtyDaysAgo = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
     const sixtyDaysFromNow = new Date(Date.now() + 60 * 864e5).toISOString().slice(0, 10);
+    const threeYearsAgo = auFyStart(2); // start of FY 2 years before current
 
     const [
       // Members
@@ -39,7 +53,11 @@ async function buildContext(): Promise<string> {
       // Attendance & classes
       { count: attendanceLast30 },
       { data: popularClasses },
-      // New members joined this month
+      // Historical financials
+      { data: historicIncome },
+      { data: historicExpenses },
+      { data: payRuns },
+      { data: bankTxns90 },
     ] = await Promise.all([
       supabase.from("members").select("*", { count: "exact", head: true })
         .eq("member_type", "gym_member").eq("member_status", "active").is("merged_into", null),
@@ -80,6 +98,21 @@ async function buildContext(): Promise<string> {
         .gte("attended_at", thirtyDaysAgo),
       supabase.from("attendance_records").select("class_name")
         .gte("attended_at", thirtyDaysAgo).limit(500),
+      // Historical Xero income (ACCREC) for multi-year view
+      supabase.from("xero_invoices").select("amount_paid, date")
+        .eq("status", "PAID").eq("invoice_type", "ACCREC")
+        .gte("date", threeYearsAgo).order("date"),
+      // Historical Xero expenses (ACCPAY supplier bills)
+      supabase.from("xero_invoices").select("total, date, status, contact_name")
+        .eq("invoice_type", "ACCPAY").gte("date", threeYearsAgo).order("date"),
+      // Payroll — paid and approved pay runs with items
+      supabase.from("pay_runs")
+        .select("period_start, status, items:pay_run_items(gross_amount)")
+        .in("status", ["paid", "approved"]).order("period_start", { ascending: false }).limit(24),
+      // Bank cash position — last 90 days transactions
+      supabase.from("bank_transactions").select("amount_cents, date")
+        .gte("date", new Date(Date.now() - 90 * 864e5).toISOString().slice(0, 10))
+        .order("date", { ascending: false }).limit(500),
     ]);
 
     // Revenue breakdown by source
@@ -124,6 +157,60 @@ async function buildContext(): Promise<string> {
       .filter(o => o.status !== "cancelled")
       .reduce((sum, o) => sum + (o.total_amount ?? 0), 0);
 
+    // ── Multi-year financial aggregation ─────────────────────────────────
+    // Group Xero income by FY
+    const incomeByFy: Record<string, number> = {};
+    for (const inv of historicIncome ?? []) {
+      if (!inv.date) continue;
+      const fy = fyLabel(inv.date);
+      incomeByFy[fy] = (incomeByFy[fy] ?? 0) + (inv.amount_paid ?? 0);
+    }
+    // Group Xero expenses (ACCPAY) by FY — only PAID/AUTHORISED bills
+    const expensesByFy: Record<string, number> = {};
+    const expensesBySupplier: Record<string, number> = {};
+    for (const bill of historicExpenses ?? []) {
+      if (!bill.date) continue;
+      if (!["PAID", "AUTHORISED"].includes(bill.status ?? "")) continue;
+      const fy = fyLabel(bill.date);
+      const amt = Number(bill.total) || 0;
+      expensesByFy[fy] = (expensesByFy[fy] ?? 0) + amt;
+      if (bill.contact_name) {
+        expensesBySupplier[bill.contact_name] = (expensesBySupplier[bill.contact_name] ?? 0) + amt;
+      }
+    }
+    const topSuppliers = Object.entries(expensesBySupplier)
+      .sort((a, b) => b[1] - a[1]).slice(0, 5)
+      .map(([name, amt]) => `${name} ${fmtMoney(amt)}`).join(", ") || "none";
+
+    // P&L by FY (income - expenses)
+    const allFys = [...new Set([...Object.keys(incomeByFy), ...Object.keys(expensesByFy)])].sort();
+    const plByFy = allFys.map(fy => {
+      const income = incomeByFy[fy] ?? 0;
+      const expenses = expensesByFy[fy] ?? 0;
+      const net = income - expenses;
+      return `${fy}: income ${fmtMoney(income)}, expenses ${fmtMoney(expenses)}, net ${net >= 0 ? "+" : ""}${fmtMoney(net)}`;
+    });
+
+    // Payroll totals by FY
+    const payrollByFy: Record<string, number> = {};
+    for (const run of payRuns ?? []) {
+      if (!run.period_start) continue;
+      const fy = fyLabel(run.period_start);
+      const items = (run.items ?? []) as { gross_amount: number }[];
+      const gross = items.reduce((s, i) => s + Number(i.gross_amount), 0);
+      payrollByFy[fy] = (payrollByFy[fy] ?? 0) + gross;
+    }
+
+    // Bank cash position (net last 90 days)
+    const bankInflow90 = (bankTxns90 ?? []).filter(t => t.amount_cents > 0).reduce((s, t) => s + t.amount_cents, 0);
+    const bankOutflow90 = (bankTxns90 ?? []).filter(t => t.amount_cents < 0).reduce((s, t) => s + Math.abs(t.amount_cents), 0);
+    const bankNet90 = bankInflow90 - bankOutflow90;
+
+    // Revenue per active member
+    const revenuePerMember = (activeGymMembers ?? 0) > 0
+      ? fmtMoney(totalRevenue / (activeGymMembers ?? 1)) + "/member/month"
+      : "unknown";
+
     return `
 LIVE PLATFORM DATA (as of ${today}) — data is fetched fresh every message:
 
@@ -147,6 +234,22 @@ FINANCE (last 30 days):
 - Total revenue: $${totalRevenue.toFixed(2)}
 - Revenue by source: ${revenueBreakdown}
 - Merch shop revenue: $${merchRevenue.toFixed(2)}
+- Revenue per active member: ${revenuePerMember}
+
+FINANCIAL HISTORY — YEAR BY YEAR (from Xero):
+${plByFy.length > 0 ? plByFy.join("\n") : "- No multi-year data available yet — Xero sync needed"}
+
+PAYROLL PAID (by financial year):
+${Object.entries(payrollByFy).sort().map(([fy, amt]) => `- ${fy}: ${fmtMoney(amt)}`).join("\n") || "- No payroll runs recorded yet"}
+
+EXPENSES — TOP SUPPLIERS (all time):
+- ${topSuppliers}
+
+BANK CASH POSITION (last 90 days — from Xero bank feed):
+- Inflow: ${fmtMoney(bankInflow90 / 100)}
+- Outflow: ${fmtMoney(bankOutflow90 / 100)}
+- Net: ${bankNet90 >= 0 ? "+" : ""}${fmtMoney(Math.abs(bankNet90) / 100)} ${bankNet90 >= 0 ? "(positive)" : "(NEGATIVE — cash outflow exceeds inflow)"}
+${(bankTxns90 ?? []).length === 0 ? "- No bank transactions synced yet — run Sync from Xero on the Bank Feed page" : ""}
 
 COMPLIANCE (expiring within 60 days):
 ${expiringCompliance?.length
@@ -204,7 +307,7 @@ You help the BFC team with:
 
 You speak in plain Australian English, are direct and concise, and always ground your advice in the actual data below.
 
-IMPORTANT: The data below is fetched LIVE from the BFC database every single message — it is not static. You have real-time visibility into members, leads, tasks, revenue, attendance, compliance, and merch. When asked about current state, answer confidently from the data provided. Never say you "don't have access" to the app — you do, through this live data feed.
+IMPORTANT: The data below is fetched LIVE from the BFC database every single message — it is not static. You have real-time visibility into members, leads, tasks, revenue, attendance, compliance, and merch. You ALSO have multi-year financial history from Xero including year-by-year income, expenses, and estimated P&L. When asked about current state or financial trajectory, answer confidently from the data provided. Never say you "don't have access" to financial data — you do, through this live data feed. If historical data shows $0 or "no data", explain that Xero may need a sync rather than saying the data doesn't exist.
 
 ${context}
 
