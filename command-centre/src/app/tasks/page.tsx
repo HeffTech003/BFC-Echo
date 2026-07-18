@@ -55,12 +55,64 @@ export default async function TasksPage() {
   const staff = staffRes.data ?? [];
   const today = isoToday();
 
+  // Stats
+  const overdueTasks   = tasks.filter(t => t.due_date && t.due_date <= today);
+  const urgentTasks    = tasks.filter(t => t.priority === "urgent");
+  const inProgressTasks = tasks.filter(t => t.status === "in_progress");
+
+  // Sort: overdue first, then by priority weight, then by due_date
+  const PRIORITY_WEIGHT: Record<string, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
+  const sortedTasks = [...tasks].sort((a, b) => {
+    const aOverdue = a.due_date && a.due_date <= today ? 0 : 1;
+    const bOverdue = b.due_date && b.due_date <= today ? 0 : 1;
+    if (aOverdue !== bOverdue) return aOverdue - bOverdue;
+    const pw = (PRIORITY_WEIGHT[a.priority] ?? 2) - (PRIORITY_WEIGHT[b.priority] ?? 2);
+    if (pw !== 0) return pw;
+    if (!a.due_date) return 1;
+    if (!b.due_date) return -1;
+    return a.due_date.localeCompare(b.due_date);
+  });
+
   return (
     <AppShell profile={profile}>
-      <h1 className="mb-1 text-2xl font-semibold">Task Queue</h1>
-      <p className="text-muted-foreground mb-6 text-sm">
-        {isAdmin ? "All open tasks across the team." : "Tasks assigned to you or created by you."}
-      </p>
+      <div className="mb-4 flex items-baseline gap-4">
+        <h1 className="text-2xl font-semibold">Task Queue</h1>
+        <span className="text-muted-foreground text-sm">{tasks.length} open</span>
+      </div>
+
+      {/* Stat cards */}
+      <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+        <Card className="gap-2 py-4 border-l-4 border-l-border">
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{tasks.length}</div>
+            <div className="mt-1 text-sm font-medium">Total open</div>
+            <div className="text-xs text-muted-foreground mt-0.5">open + in progress</div>
+          </CardContent>
+        </Card>
+        <Card className={`gap-2 py-4 border-l-4 ${overdueTasks.length > 0 ? "border-l-destructive" : "border-l-border"}`}>
+          <CardContent className="px-4">
+            <div className={`text-3xl font-bold tabular-nums ${overdueTasks.length > 0 ? "text-destructive" : ""}`}>
+              {overdueTasks.length}
+            </div>
+            <div className="mt-1 text-sm font-medium">Overdue</div>
+            <div className="text-xs text-muted-foreground mt-0.5">past due date</div>
+          </CardContent>
+        </Card>
+        <Card className={`gap-2 py-4 border-l-4 ${urgentTasks.length > 0 ? "border-l-warning" : "border-l-border"}`}>
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{urgentTasks.length}</div>
+            <div className="mt-1 text-sm font-medium">Urgent</div>
+            <div className="text-xs text-muted-foreground mt-0.5">high priority</div>
+          </CardContent>
+        </Card>
+        <Card className="gap-2 py-4 border-l-4 border-l-primary">
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{inProgressTasks.length}</div>
+            <div className="mt-1 text-sm font-medium">In progress</div>
+            <div className="text-xs text-muted-foreground mt-0.5">being worked on</div>
+          </CardContent>
+        </Card>
+      </div>
 
       <Card className="mb-8">
         <CardHeader>
@@ -134,7 +186,7 @@ export default async function TasksPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {tasks.map((t) => {
+              {sortedTasks.map((t) => {
                 const assignee = Array.isArray(t.assignee) ? t.assignee[0] : t.assignee;
                 const member = Array.isArray(t.member) ? t.member[0] : t.member;
                 const overdue = t.due_date && t.due_date <= today;

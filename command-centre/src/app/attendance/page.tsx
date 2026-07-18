@@ -73,30 +73,34 @@ export default async function AttendancePage() {
 
       {/* 30-day stats */}
       <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-        <Card>
-          <CardContent className="py-4">
-            <div className="text-3xl font-bold tabular-nums text-success-foreground">{stats.attended}</div>
-            <div className="text-sm text-muted-foreground">Attended (30d)</div>
+        <Card className="gap-2 py-4 border-l-4 border-l-success">
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{stats.attended}</div>
+            <div className="mt-1 text-sm font-medium">Attended</div>
+            <div className="text-xs text-muted-foreground mt-0.5">last 30 days</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="py-4">
-            <div className="text-3xl font-bold tabular-nums text-destructive">{stats.no_show}</div>
-            <div className="text-sm text-muted-foreground">No-shows (30d)</div>
+        <Card className="gap-2 py-4 border-l-4 border-l-destructive">
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{stats.no_show}</div>
+            <div className="mt-1 text-sm font-medium">No-shows</div>
+            <div className="text-xs text-muted-foreground mt-0.5">last 30 days</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="py-4">
+        <Card className="gap-2 py-4 border-l-4 border-l-warning">
+          <CardContent className="px-4">
             <div className="text-3xl font-bold tabular-nums">{stats.cancelled}</div>
-            <div className="text-sm text-muted-foreground">Cancelled (30d)</div>
+            <div className="mt-1 text-sm font-medium">Cancelled</div>
+            <div className="text-xs text-muted-foreground mt-0.5">last 30 days</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="py-4">
+        <Card className="gap-2 py-4 border-l-4 border-l-primary">
+          <CardContent className="px-4">
             <div className="text-3xl font-bold tabular-nums">
               {attendanceRate !== null ? `${attendanceRate}%` : "—"}
             </div>
-            <div className="text-sm text-muted-foreground">Attendance rate</div>
+            <div className="mt-1 text-sm font-medium">Attendance rate</div>
+            <div className="text-xs text-muted-foreground mt-0.5">attended ÷ tracked</div>
           </CardContent>
         </Card>
       </div>
