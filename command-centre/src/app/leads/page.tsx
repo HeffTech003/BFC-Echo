@@ -2,6 +2,7 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { formatDate, sourceLabel } from "@/lib/format";
 import { updateLead, moveLeadStage, createLead, deleteLead, triggerLeadFollowup } from "./actions";
 import { UserPlus, Phone, Mail, Calendar, ChevronRight, CheckCircle2, XCircle, Clock, TrendingUp } from "lucide-react";
@@ -193,28 +194,37 @@ export default async function LeadsPage() {
         </details>
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-lg border bg-white p-3">
-          <div className="text-2xl font-semibold tabular-nums">{open.length}</div>
-          <div className="text-muted-foreground text-xs mt-0.5">Open leads</div>
-        </div>
-        <div className="rounded-lg border bg-white p-3">
-          <div className="text-2xl font-semibold tabular-nums text-green-600">{totalJoined}</div>
-          <div className="text-muted-foreground text-xs mt-0.5">Total joined</div>
-        </div>
-        <div className="rounded-lg border bg-white p-3 flex items-center gap-2">
-          <TrendingUp className="h-5 w-5 text-blue-500 shrink-0" />
-          <div>
-            <div className="text-2xl font-semibold tabular-nums">{conversionRate}%</div>
-            <div className="text-muted-foreground text-xs">Conversion rate</div>
-          </div>
-        </div>
-        <div className={`rounded-lg border p-3 ${staleOpen.length > 0 ? "bg-red-50 border-red-200" : "bg-white"}`}>
-          <div className={`text-2xl font-semibold tabular-nums ${staleOpen.length > 0 ? "text-red-600" : ""}`}>{staleOpen.length}</div>
-          <div className="text-muted-foreground text-xs mt-0.5 flex items-center gap-1">
-            <Clock className="h-3 w-3" />Stale (&gt;7 days)
-          </div>
-        </div>
+      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <Card className="gap-2 py-4 border-l-4 border-l-primary">
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{open.length}</div>
+            <div className="mt-1 text-sm font-medium">Open leads</div>
+            <div className="text-xs text-muted-foreground mt-0.5">in pipeline</div>
+          </CardContent>
+        </Card>
+        <Card className="gap-2 py-4 border-l-4 border-l-success">
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{totalJoined}</div>
+            <div className="mt-1 text-sm font-medium">Total joined</div>
+            <div className="text-xs text-muted-foreground mt-0.5">converted to member</div>
+          </CardContent>
+        </Card>
+        <Card className="gap-2 py-4 border-l-4 border-l-border">
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{conversionRate}%</div>
+            <div className="mt-1 text-sm font-medium">Conversion rate</div>
+            <div className="text-xs text-muted-foreground mt-0.5">leads → members</div>
+          </CardContent>
+        </Card>
+        <Card className={`gap-2 py-4 border-l-4 ${staleOpen.length > 0 ? "border-l-destructive" : "border-l-border"}`}>
+          <CardContent className="px-4">
+            <div className={`text-3xl font-bold tabular-nums ${staleOpen.length > 0 ? "text-destructive" : ""}`}>{staleOpen.length}</div>
+            <div className="mt-1 text-sm font-medium">Stale leads</div>
+            <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+              <Clock className="h-3 w-3" />no activity &gt;7 days
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <h2 className="mb-3 font-medium text-slate-700">Active Pipeline</h2>

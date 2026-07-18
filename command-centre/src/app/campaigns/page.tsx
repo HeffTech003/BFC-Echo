@@ -1,17 +1,18 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createCampaign, sendCampaign, deleteCampaign } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-const STATUS_COLOURS: Record<string, string> = {
-  draft:     "bg-gray-100 text-gray-700",
-  queued:    "bg-blue-100 text-blue-700",
-  sending:   "bg-yellow-100 text-yellow-700",
-  sent:      "bg-green-100 text-green-700",
-  cancelled: "bg-red-100 text-red-700",
+const STATUS_VARIANT: Record<string, "secondary" | "warning" | "success" | "destructive" | "outline"> = {
+  draft:     "secondary",
+  queued:    "warning",
+  sending:   "warning",
+  sent:      "success",
+  cancelled: "destructive",
 };
 
 const SEGMENT_LABELS: Record<string, string> = {
@@ -46,13 +47,35 @@ export default async function CampaignsPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Card><CardHeader className="pb-1"><CardTitle className="text-sm">Sent Campaigns</CardTitle></CardHeader>
-            <CardContent><p className="text-2xl font-bold">{totalSent}</p></CardContent></Card>
-          <Card><CardHeader className="pb-1"><CardTitle className="text-sm">Drafts</CardTitle></CardHeader>
-            <CardContent><p className="text-2xl font-bold">{totalDraft}</p></CardContent></Card>
-          <Card><CardHeader className="pb-1"><CardTitle className="text-sm">Total Recipients Reached</CardTitle></CardHeader>
-            <CardContent><p className="text-2xl font-bold">{totalReach}</p></CardContent></Card>
+        <div className="grid gap-4 sm:grid-cols-4">
+          <Card className="gap-2 py-4 border-l-4 border-l-success">
+            <CardContent className="px-4">
+              <div className="text-3xl font-bold tabular-nums">{totalSent}</div>
+              <div className="mt-1 text-sm font-medium">Campaigns sent</div>
+              <div className="text-xs text-muted-foreground mt-0.5">all time</div>
+            </CardContent>
+          </Card>
+          <Card className={`gap-2 py-4 border-l-4 ${totalDraft > 0 ? "border-l-warning" : "border-l-border"}`}>
+            <CardContent className="px-4">
+              <div className="text-3xl font-bold tabular-nums">{totalDraft}</div>
+              <div className="mt-1 text-sm font-medium">Drafts</div>
+              <div className="text-xs text-muted-foreground mt-0.5">ready to send</div>
+            </CardContent>
+          </Card>
+          <Card className="gap-2 py-4 border-l-4 border-l-primary">
+            <CardContent className="px-4">
+              <div className="text-3xl font-bold tabular-nums">{totalReach}</div>
+              <div className="mt-1 text-sm font-medium">Total recipients</div>
+              <div className="text-xs text-muted-foreground mt-0.5">all-time reach</div>
+            </CardContent>
+          </Card>
+          <Card className="gap-2 py-4 border-l-4 border-l-border">
+            <CardContent className="px-4">
+              <div className="text-3xl font-bold tabular-nums">{campaigns?.length ?? 0}</div>
+              <div className="mt-1 text-sm font-medium">Total campaigns</div>
+              <div className="text-xs text-muted-foreground mt-0.5">all statuses</div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Create campaign */}
@@ -135,9 +158,9 @@ export default async function CampaignsPage() {
                     </div>
                   </div>
                   <div className="text-right space-y-1">
-                    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLOURS[c.status] ?? "bg-gray-100"}`}>
+                    <Badge variant={STATUS_VARIANT[c.status] ?? "outline"} className="text-xs">
                       {c.status}
-                    </span>
+                    </Badge>
                     {c.status === "sent" && (
                       <div className="text-xs text-muted-foreground">
                         {c.sent_count} sent · {c.sent_at ? new Date(c.sent_at).toLocaleDateString("en-AU") : ""}
@@ -149,13 +172,13 @@ export default async function CampaignsPage() {
                   <div className="flex gap-2">
                     <form action={sendCampaign}>
                       <input type="hidden" name="campaign_id" value={c.id} />
-                      <button type="submit" className="rounded border bg-green-50 px-3 py-1 text-xs font-medium text-green-700 hover:bg-green-100">
+                      <button type="submit" className="h-7 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90">
                         Send Now
                       </button>
                     </form>
                     <form action={deleteCampaign}>
                       <input type="hidden" name="campaign_id" value={c.id} />
-                      <button type="submit" className="rounded border bg-red-50 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-100">
+                      <button type="submit" className="h-7 rounded-md border border-destructive/30 px-3 text-xs text-destructive hover:bg-destructive/10">
                         Delete
                       </button>
                     </form>

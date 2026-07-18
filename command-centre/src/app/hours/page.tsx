@@ -76,32 +76,36 @@ export default async function HoursPage() {
 
       {/* Summary cards */}
       <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-        <Card>
-          <CardContent className="py-4">
+        <Card className="gap-2 py-4 border-l-4 border-l-border">
+          <CardContent className="px-4">
             <div className="text-3xl font-bold tabular-nums">{sessions.length}</div>
-            <div className="text-sm text-muted-foreground">Sessions (30d)</div>
+            <div className="mt-1 text-sm font-medium">Sessions (30d)</div>
+            <div className="text-xs text-muted-foreground mt-0.5">logged by coaches</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="py-4">
+        <Card className="gap-2 py-4 border-l-4 border-l-primary">
+          <CardContent className="px-4">
             <div className="text-3xl font-bold tabular-nums">
-              {Math.round(sessions.reduce((s, r) => s + (r.duration_minutes ?? 0), 0) / 60 * 10) / 10}
+              {Math.round(sessions.reduce((s, r) => s + (r.duration_minutes ?? 0), 0) / 60 * 10) / 10}h
             </div>
-            <div className="text-sm text-muted-foreground">Total hours (30d)</div>
+            <div className="mt-1 text-sm font-medium">Total hours (30d)</div>
+            <div className="text-xs text-muted-foreground mt-0.5">across all coaches</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="py-4">
+        <Card className="gap-2 py-4 border-l-4 border-l-success">
+          <CardContent className="px-4">
             <div className="text-3xl font-bold tabular-nums">{hoursByCoach.size}</div>
-            <div className="text-sm text-muted-foreground">Active coaches</div>
+            <div className="mt-1 text-sm font-medium">Active coaches</div>
+            <div className="text-xs text-muted-foreground mt-0.5">logged hours this month</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="py-4">
+        <Card className="gap-2 py-4 border-l-4 border-l-border">
+          <CardContent className="px-4">
             <div className="text-3xl font-bold tabular-nums">
               {sessions.filter((s) => s.session_date?.startsWith(currentMonth)).length}
             </div>
-            <div className="text-sm text-muted-foreground">Sessions this month</div>
+            <div className="mt-1 text-sm font-medium">Sessions this month</div>
+            <div className="text-xs text-muted-foreground mt-0.5">current month</div>
           </CardContent>
         </Card>
       </div>
