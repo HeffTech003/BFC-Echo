@@ -52,15 +52,52 @@ export default async function FormsPage() {
   const nowIso = isoDaysAgo(0);
   const soonIso = isoDaysAgo(-60);
   const links = (linksRes.data ?? []).filter((l) => l.expires_at > nowIso);
+  const expiringSoon = forms.filter((f) => f.expires_at && f.expires_at > nowIso && f.expires_at < soonIso).length;
+  const youthForms = forms.filter((f) => {
+    const m = Array.isArray(f.member) ? f.member[0] : f.member;
+    return m?.is_youth;
+  }).length;
 
   return (
     <AppShell profile={profile}>
       <h1 className="mb-1 text-2xl font-semibold">Medical & Emergency Forms</h1>
-      <p className="text-muted-foreground mb-6 text-sm">
+      <p className="text-muted-foreground mb-4 text-sm">
         Restricted to Owner/Director and Child Safety Lead. Forms are completed by the
         member or guardian through secure expiring links — staff never type in health
         data on someone&apos;s behalf.
       </p>
+
+      {/* Stat cards */}
+      <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+        <Card className="gap-2 py-4 border-l-4 border-l-border">
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{forms.length}</div>
+            <div className="mt-1 text-sm font-medium">Forms on file</div>
+            <div className="text-xs text-muted-foreground mt-0.5">submitted total</div>
+          </CardContent>
+        </Card>
+        <Card className="gap-2 py-4 border-l-4 border-l-primary">
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{youthForms}</div>
+            <div className="mt-1 text-sm font-medium">Youth forms</div>
+            <div className="text-xs text-muted-foreground mt-0.5">under-18 members</div>
+          </CardContent>
+        </Card>
+        <Card className={`gap-2 py-4 border-l-4 ${expiringSoon > 0 ? "border-l-warning" : "border-l-border"}`}>
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{expiringSoon}</div>
+            <div className="mt-1 text-sm font-medium">Expiring soon</div>
+            <div className="text-xs text-muted-foreground mt-0.5">within 60 days</div>
+          </CardContent>
+        </Card>
+        <Card className={`gap-2 py-4 border-l-4 ${links.length > 0 ? "border-l-warning" : "border-l-border"}`}>
+          <CardContent className="px-4">
+            <div className="text-3xl font-bold tabular-nums">{links.length}</div>
+            <div className="mt-1 text-sm font-medium">Pending links</div>
+            <div className="text-xs text-muted-foreground mt-0.5">sent, not yet completed</div>
+          </CardContent>
+        </Card>
+      </div>
 
       <Card className="mb-8">
         <CardHeader>

@@ -126,39 +126,37 @@ export default async function TrialFunnelPage() {
 
       {/* ── KPI cards ────────────────────────────────────────────────────── */}
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Card className="py-4 gap-1">
+        <Card className={`gap-2 py-4 border-l-4 ${totalInPipeline > 0 ? "border-l-primary" : "border-l-border"}`}>
           <CardContent className="px-4">
-            <div className="text-2xl font-semibold tabular-nums">{totalInPipeline}</div>
-            <div className="text-sm font-medium mt-0.5">In pipeline</div>
-            <div className="text-xs text-muted-foreground">active leads</div>
+            <div className="text-3xl font-bold tabular-nums">{totalInPipeline}</div>
+            <div className="mt-1 text-sm font-medium">In pipeline</div>
+            <div className="text-xs text-muted-foreground mt-0.5">active leads</div>
           </CardContent>
         </Card>
-        <Card className="py-4 gap-1">
+        <Card className="gap-2 py-4 border-l-4 border-l-success">
           <CardContent className="px-4">
-            <div className="text-2xl font-semibold tabular-nums text-success-foreground">
+            <div className="text-3xl font-bold tabular-nums">
               {conversionRate}{conversionRate !== "—" ? "%" : ""}
             </div>
-            <div className="text-sm font-medium mt-0.5">Conversion rate</div>
-            <div className="text-xs text-muted-foreground">{totalConverted} converted · {totalLost} lost</div>
+            <div className="mt-1 text-sm font-medium">Conversion rate</div>
+            <div className="text-xs text-muted-foreground mt-0.5">{totalConverted} converted · {totalLost} lost</div>
           </CardContent>
         </Card>
-        <Card className="py-4 gap-1">
+        <Card className="gap-2 py-4 border-l-4 border-l-border">
           <CardContent className="px-4">
-            <div className="text-2xl font-semibold tabular-nums">
+            <div className="text-3xl font-bold tabular-nums">
               {avgDaysToConvert ?? "—"}
-              {avgDaysToConvert && <span className="text-base font-normal text-muted-foreground">d</span>}
+              {avgDaysToConvert && <span className="text-xl font-normal text-muted-foreground">d</span>}
             </div>
-            <div className="text-sm font-medium mt-0.5">Avg to convert</div>
-            <div className="text-xs text-muted-foreground">enquiry → member</div>
+            <div className="mt-1 text-sm font-medium">Avg to convert</div>
+            <div className="text-xs text-muted-foreground mt-0.5">enquiry → member</div>
           </CardContent>
         </Card>
-        <Card className="py-4 gap-1">
+        <Card className={`gap-2 py-4 border-l-4 ${recentConversions.length > 0 ? "border-l-success" : "border-l-border"}`}>
           <CardContent className="px-4">
-            <div className="text-2xl font-semibold tabular-nums text-primary">
-              {recentConversions.length}
-            </div>
-            <div className="text-sm font-medium mt-0.5">New members</div>
-            <div className="text-xs text-muted-foreground">last 90 days</div>
+            <div className="text-3xl font-bold tabular-nums">{recentConversions.length}</div>
+            <div className="mt-1 text-sm font-medium">New members</div>
+            <div className="text-xs text-muted-foreground mt-0.5">last 90 days</div>
           </CardContent>
         </Card>
       </div>
