@@ -27,11 +27,11 @@ export default async function MembersPage() {
   const rows: MemberRow[] = members ?? [];
 
   // Stat counts (derived from client data, no extra DB round trips)
-  const active    = rows.filter(r => r.member_status === "active");
-  const gymActive = active.filter(r => r.member_type === "gym_member").length;
-  const nacActive = active.filter(r => r.member_type === "nac").length;
+  const active       = rows.filter(r => r.member_status === "active");
+  const gymActive    = active.filter(r => r.member_type === "gym_member").length;
+  const nacActive    = active.filter(r => r.member_type === "nac").length;
   const onlineActive = active.filter(r => r.member_type === "online_customer").length;
-  const inactive  = rows.filter(r => ["inactive","cancelled","suspended"].includes(r.member_status ?? "")).length;
+  const inactive     = rows.filter(r => ["inactive","cancelled","suspended"].includes(r.member_status ?? "")).length;
 
   return (
     <AppShell profile={profile}>
